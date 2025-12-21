@@ -152,6 +152,21 @@ class DistributionalSolution:
     def __lt__(self, other):
         """Comparison for sorting (by fitness)."""
         return self.fitness < other.fitness
+    
+    def get_hash(self) -> int:
+        """
+        Get a hash of the distributional solution.
+        
+        Combines hashes of all particles and their weights.
+        """
+        # Get hashes of all particles
+        particle_hashes = [p.get_hash() for p in self.distribution.particles]
+        
+        # Combine with weight hash
+        weights_hash = hash(self.distribution.weights.tobytes())
+        
+        # Return composite hash
+        return hash(tuple(particle_hashes + [weights_hash]))
 
 
 # =============================================================================
@@ -160,7 +175,7 @@ class DistributionalSolution:
 
 def mean_objective(
     dist: ParticleDistribution,
-    base_fitness_fn: Callable,
+    base_fitness_fn: Union[Callable, np.ndarray, List[float]],
     n_samples: int = 100,
     data: Dict[str, Any] = None
 ) -> float:
@@ -171,10 +186,10 @@ def mean_objective(
     ----------
     dist : ParticleDistribution
         Distribution to evaluate
-    base_fitness_fn : Callable
-        Base fitness function f(int_vals, dbl_vals, data)
+    base_fitness_fn : Callable or array-like
+        Base fitness function f(int_vals, dbl_vals, data) OR pre-computed fitness for each particle
     n_samples : int
-        Number of Monte Carlo samples
+        Number of Monte Carlo samples (only if base_fitness_fn is callable)
     data : Dict
         Data dictionary for fitness function
         
@@ -183,6 +198,15 @@ def mean_objective(
     float
         Expected fitness
     """
+    # Case 1: Pre-computed fitness values provided
+    if not callable(base_fitness_fn):
+        fitness_values = np.asarray(base_fitness_fn, dtype=float)
+        if len(fitness_values) != dist.K:
+            raise ValueError(f"Fitness array length ({len(fitness_values)}) must match number of particles ({dist.K})")
+        # Exact expected value for discrete distribution
+        return float(np.sum(dist.weights * fitness_values))
+
+    # Case 2: Fitness function provided (Monte Carlo estimation)
     if data is None:
         data = {}
     
@@ -199,9 +223,299 @@ def mean_objective(
     return float(np.mean(fitness_values))
 
 
-def mean_variance_objective(
+def _ensure_2d(arr: np.ndarray) -> np.ndarray:
+    """Ensure objective arrays are 2D (n_samples x n_obj)."""
+    if arr.ndim == 1:
+        return arr.reshape(-1, 1)
+    return arr
+
+
+def evaluate_particle_objectives(
     dist: ParticleDistribution,
     base_fitness_fn: Callable,
+    data: Dict[str, Any] = None
+) -> np.ndarray:
+    """
+    Evaluate the base fitness function once per particle.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (K, n_obj)
+    """
+    if data is None:
+        data = {}
+
+    def _call_base_fitness(sol: Solution) -> Any:
+        """Align call signature with TrainSel convention (data last)."""
+        has_int = bool(sol.int_values)
+        has_dbl = bool(sol.dbl_values)
+        if has_int and has_dbl:
+            int_arg = sol.int_values if len(sol.int_values) > 1 else sol.int_values[0]
+            dbl_arg = sol.dbl_values if len(sol.dbl_values) > 1 else sol.dbl_values[0]
+            return base_fitness_fn(int_arg, dbl_arg, data)
+        elif has_int:
+            int_arg = sol.int_values if len(sol.int_values) > 1 else sol.int_values[0]
+            return base_fitness_fn(int_arg, data)
+        else:
+            dbl_arg = sol.dbl_values if len(sol.dbl_values) > 1 else sol.dbl_values[0]
+            return base_fitness_fn(dbl_arg, data)
+
+    values = [
+        _call_base_fitness(sol)
+        for sol in dist.particles
+    ]
+    return _ensure_2d(np.asarray(values, dtype=float))
+
+
+def sample_distribution_objectives(
+    dist: ParticleDistribution,
+    base_fitness_fn: Callable,
+    n_samples: int,
+    data: Dict[str, Any] = None
+) -> np.ndarray:
+    """
+    Evaluate the base fitness function on Monte Carlo samples from the distribution.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (n_samples, n_obj)
+    """
+    if data is None:
+        data = {}
+    samples = dist.sample(n_samples)
+
+    def _call_base_fitness(sol: Solution) -> Any:
+        # Handle stray DistributionalSolution particles by unwrapping first particle
+        if hasattr(sol, "distribution") and hasattr(sol.distribution, "particles"):
+            inner = sol.distribution.particles[0] if sol.distribution.particles else None
+            if inner is not None:
+                sol = inner
+        has_int = bool(getattr(sol, "int_values", []))
+        has_dbl = bool(getattr(sol, "dbl_values", []))
+        if has_int and has_dbl:
+            int_arg = sol.int_values if len(sol.int_values) > 1 else sol.int_values[0]
+            dbl_arg = sol.dbl_values if len(sol.dbl_values) > 1 else sol.dbl_values[0]
+            return base_fitness_fn(int_arg, dbl_arg, data)
+        elif has_int:
+            int_arg = sol.int_values if len(sol.int_values) > 1 else sol.int_values[0]
+            return base_fitness_fn(int_arg, data)
+        else:
+            dbl_arg = sol.dbl_values if len(sol.dbl_values) > 1 else sol.dbl_values[0]
+            return base_fitness_fn(dbl_arg, data)
+
+    values = [_call_base_fitness(sol) for sol in samples]
+    return _ensure_2d(np.asarray(values, dtype=float))
+
+
+def compute_hv_2d(
+    values: np.ndarray,
+    hv_ref: Optional[Tuple[float, float]] = None,
+    maximize: bool = True,
+    weights: Optional[np.ndarray] = None
+) -> float:
+    """
+    Compute a simple 2D hypervolume for maximization problems.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Array of shape (n_points, 2)
+    hv_ref : Tuple[float, float], optional
+        Reference point (assumed dominated by all points). If None, uses a loose
+        reference based on minimum values.
+    maximize : bool
+        If False, will flip signs to treat as maximization.
+    weights : np.ndarray, optional
+        Sample weights (if provided, will weight points before Pareto filtering)
+    """
+    vals = np.asarray(values, dtype=float)
+    if vals.ndim != 2 or vals.shape[1] != 2 or vals.size == 0:
+        return 0.0
+    # Convert to maximization
+    if not maximize:
+        vals = -vals
+    # Weighted Pareto filter (approximate): keep points with highest weight for identical coords
+    if weights is not None:
+        weights = np.asarray(weights, dtype=float)
+        # simple tie-breaker by weight
+        order = np.lexsort((weights, vals[:, 0], vals[:, 1]))
+        vals = vals[order]
+    # Pareto prune
+    vals = vals[np.argsort(-vals[:, 0])]
+    pruned = []
+    best_y = -np.inf
+    for x, y in vals:
+        if y > best_y:
+            pruned.append((x, y))
+            best_y = y
+    if not pruned:
+        return 0.0
+    pruned = np.array(pruned)
+    if hv_ref is None:
+        ref_x = pruned[:, 0].min() - 0.1 * max(1.0, abs(pruned[:, 0].min()))
+        ref_y = pruned[:, 1].min() - 0.1 * max(1.0, abs(pruned[:, 1].min()))
+    else:
+        ref_x, ref_y = hv_ref
+        if not maximize:
+            ref_x, ref_y = -ref_x, -ref_y
+    hv = 0.0
+    for i, (x, y) in enumerate(pruned):
+        next_x = pruned[i + 1, 0] if i + 1 < len(pruned) else ref_x
+        width = max(0.0, x - next_x)
+        height = max(0.0, y - ref_y)
+        hv += width * height
+    return float(hv)
+
+
+def _aggregate_cvar(
+    values: np.ndarray,
+    weights: Optional[np.ndarray],
+    alpha: float,
+    maximize: bool
+) -> np.ndarray:
+    """Compute CVaR per objective for weighted or unweighted samples."""
+    n_samples, n_obj = values.shape
+    results = []
+    for j in range(n_obj):
+        col = values[:, j]
+        if weights is None:
+            tail_size = max(1, int(alpha * n_samples))
+            idx = np.argsort(col)
+            if not maximize:
+                idx = idx[::-1]
+            tail_vals = col[idx[:tail_size]]
+            results.append(float(np.mean(tail_vals)))
+        else:
+            idx = np.argsort(col)
+            if not maximize:
+                idx = idx[::-1]
+            sorted_vals = col[idx]
+            sorted_weights = weights[idx]
+            cum_w = np.cumsum(sorted_weights)
+            tail_mask = cum_w <= alpha + 1e-12
+            if not np.any(tail_mask):
+                results.append(float(sorted_vals[0]))
+                continue
+            tail_vals = sorted_vals[tail_mask]
+            tail_weights = sorted_weights[tail_mask]
+            weight_sum = float(np.sum(tail_weights))
+            next_idx = tail_mask.sum()
+            if weight_sum < alpha and next_idx < len(sorted_vals):
+                tail_vals = np.append(tail_vals, sorted_vals[next_idx])
+                tail_weights = np.append(tail_weights, alpha - weight_sum)
+                weight_sum = alpha
+            results.append(float(np.sum(tail_vals * tail_weights) / weight_sum))
+    return np.asarray(results, dtype=float)
+
+
+def aggregate_distributional_objectives(
+    values: np.ndarray,
+    weights: Optional[np.ndarray] = None,
+    objective_type: str = "mean",
+    lambda_var: float = 1.0,
+    alpha: float = 0.1,
+    tau: float = 0.1,
+    maximize: bool = True,
+    entropy_weights: Optional[np.ndarray] = None,
+    hv_ref: Optional[Tuple[float, float]] = None
+) -> np.ndarray:
+    """
+    Aggregate sampled or per-particle objective values into a single vector.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Objective values with shape (n_samples, n_obj)
+    weights : np.ndarray, optional
+        Sample weights aligned with the first dimension of values
+    objective_type : str
+        Aggregation type ('mean', 'mean_variance', 'cvar', 'entropy', 'max_components')
+    lambda_var : float
+        Variance trade-off for mean_variance objective
+    alpha : float
+        Tail probability for CVaR
+    tau : float
+        Entropy weight for entropy-regularized objective
+    maximize : bool
+        Whether objectives are maximized (affects CVaR tail definition)
+    entropy_weights : np.ndarray, optional
+        Weights used for entropy calculation; defaults to provided weights or uniform
+    hv_ref : Tuple[float, float], optional
+        Reference point for hypervolume-based objectives (maximization). If None,
+        uses a loose reference based on the data.
+    """
+    vals = _ensure_2d(np.asarray(values, dtype=float))
+    if vals.size == 0:
+        return np.array([])
+
+    w = None
+    if weights is not None:
+        w = np.asarray(weights, dtype=float)
+        if w.ndim != 1 or len(w) != vals.shape[0]:
+            raise ValueError("weights must be 1D and aligned with values")
+        if w.sum() == 0:
+            w = None
+        else:
+            w = w / w.sum()
+
+    if objective_type == "mean":
+        return np.mean(vals, axis=0) if w is None else np.sum(vals * w[:, None], axis=0)
+    elif objective_type == "mean_variance":
+        if w is None:
+            mean = np.mean(vals, axis=0)
+            var = np.var(vals, axis=0)
+        else:
+            mean = np.sum(vals * w[:, None], axis=0)
+            var = np.sum(w[:, None] * (vals - mean) ** 2, axis=0)
+        return mean + lambda_var * var
+    elif objective_type == "cvar":
+        return _aggregate_cvar(vals, w, alpha, maximize)
+    elif objective_type == "entropy":
+        base_mean = np.mean(vals, axis=0) if w is None else np.sum(vals * w[:, None], axis=0)
+        ent_w = entropy_weights if entropy_weights is not None else w
+        if ent_w is None:
+            ent_w = np.ones(vals.shape[0]) / vals.shape[0]
+        ent_w = np.asarray(ent_w, dtype=float)
+        ent_w = ent_w[ent_w > 0]
+        entropy = -np.sum(ent_w * np.log(ent_w))
+        return base_mean + tau * entropy
+    elif objective_type == "entropy_cvar":
+        # Combine mean, entropy bonus, and tail emphasis
+        base_mean = np.mean(vals, axis=0) if w is None else np.sum(vals * w[:, None], axis=0)
+        ent_w = entropy_weights if entropy_weights is not None else w
+        if ent_w is None:
+            ent_w = np.ones(vals.shape[0]) / vals.shape[0]
+        ent_w = np.asarray(ent_w, dtype=float)
+        ent_w = ent_w[ent_w > 0]
+        entropy = -np.sum(ent_w * np.log(ent_w))
+        cvar_vals = _aggregate_cvar(vals, w, alpha, maximize)
+        # lambda_var acts as weight on the cvar deviation from mean
+        return base_mean + lambda_var * (cvar_vals - base_mean) + tau * entropy
+    elif objective_type == "hypervolume_entropy":
+        # Two-objective hypervolume + entropy bonus (returns 2 components)
+        if vals.shape[1] != 2:
+            raise ValueError("hypervolume_entropy requires exactly 2 objectives")
+        hv = compute_hv_2d(vals, hv_ref=hv_ref, maximize=maximize, weights=w)
+        ent_w = entropy_weights if entropy_weights is not None else w
+        if ent_w is None:
+            ent_w = np.ones(vals.shape[0]) / vals.shape[0]
+        ent_w = np.asarray(ent_w, dtype=float)
+        ent_w = ent_w[ent_w > 0]
+        entropy = -np.sum(ent_w * np.log(ent_w))
+        return np.array([hv, entropy], dtype=float)
+    elif objective_type == "max_components":
+        # Component-wise maxima across samples/particles (envelope view)
+        return np.max(vals, axis=0)
+    else:
+        # Default to mean
+        return np.mean(vals, axis=0) if w is None else np.sum(vals * w[:, None], axis=0)
+
+
+def mean_variance_objective(
+    dist: ParticleDistribution,
+    base_fitness_fn: Union[Callable, np.ndarray, List[float]],
     n_samples: int = 100,
     lambda_var: float = 1.0,
     data: Dict[str, Any] = None
@@ -213,10 +527,10 @@ def mean_variance_objective(
     ----------
     dist : ParticleDistribution
         Distribution to evaluate
-    base_fitness_fn : Callable
-        Base fitness function
+    base_fitness_fn : Callable or array-like
+        Base fitness function OR pre-computed fitness values
     n_samples : int
-        Number of Monte Carlo samples
+        Number of Monte Carlo samples (if callable)
     lambda_var : float
         Variance weight (positive for risk-seeking, negative for risk-averse)
     data : Dict
@@ -227,6 +541,18 @@ def mean_variance_objective(
     float
         Mean-variance objective value
     """
+    # Case 1: Pre-computed fitness values provided
+    if not callable(base_fitness_fn):
+        fitness_values = np.asarray(base_fitness_fn, dtype=float)
+        if len(fitness_values) != dist.K:
+            raise ValueError(f"Fitness array length ({len(fitness_values)}) must match number of particles ({dist.K})")
+            
+        # Exact mean and variance
+        mean_fit = np.sum(dist.weights * fitness_values)
+        var_fit = np.sum(dist.weights * (fitness_values - mean_fit)**2)
+        return float(mean_fit + lambda_var * var_fit)
+
+    # Case 2: Fitness function provided (Monte Carlo estimation)
     if data is None:
         data = {}
     
@@ -245,7 +571,7 @@ def mean_variance_objective(
 
 def cvar_objective(
     dist: ParticleDistribution,
-    base_fitness_fn: Callable,
+    base_fitness_fn: Union[Callable, np.ndarray, List[float]],
     n_samples: int = 100,
     alpha: float = 0.1,
     maximize: bool = True,
@@ -260,10 +586,10 @@ def cvar_objective(
     ----------
     dist : ParticleDistribution
         Distribution to evaluate
-    base_fitness_fn : Callable
-        Base fitness function
+    base_fitness_fn : Callable or array-like
+        Base fitness function OR pre-computed fitness values
     n_samples : int
-        Number of Monte Carlo samples
+        Number of Monte Carlo samples (if callable)
     alpha : float
         Quantile level (e.g., 0.1 for worst 10%)
     maximize : bool
@@ -276,6 +602,42 @@ def cvar_objective(
     float
         CVaR value
     """
+    # Case 1: Pre-computed fitness values provided (Exact discrete CVaR)
+    if not callable(base_fitness_fn):
+        fv = np.asarray(base_fitness_fn, dtype=float)
+        if len(fv) != dist.K:
+            raise ValueError(f"Fitness array length ({len(fv)}) must match number of particles ({dist.K})")
+            
+        # Sort by fitness
+        indices = np.argsort(fv)
+        if not maximize:
+            indices = indices[::-1]  # Worst = highest values
+            
+        sorted_fv = fv[indices]
+        sorted_weights = dist.weights[indices]
+        
+        # Accumulate weights until we reach alpha
+        cum_weights = np.cumsum(sorted_weights)
+        tail_mask = cum_weights <= alpha
+        
+        # If first particle is already > alpha, just take first particle
+        if not np.any(tail_mask):
+            return float(sorted_fv[0])
+            
+        # Expected value over the tail
+        tail_fv = sorted_fv[tail_mask]
+        tail_w = sorted_weights[tail_mask]
+        
+        # Add partial contribution from the next particle to reach exactly alpha
+        if cum_weights[len(tail_w) - 1] < alpha and len(tail_w) < len(sorted_fv):
+            next_idx = len(tail_w)
+            partial_w = alpha - cum_weights[next_idx - 1]
+            total_val = np.sum(tail_fv * tail_w) + sorted_fv[next_idx] * partial_w
+            return float(total_val / alpha)
+        
+        return float(np.sum(tail_fv * tail_w) / np.sum(tail_w))
+
+    # Case 2: Fitness function provided (Monte Carlo estimation)
     if data is None:
         data = {}
     
@@ -303,7 +665,7 @@ def cvar_objective(
 
 def entropy_regularized_objective(
     dist: ParticleDistribution,
-    base_fitness_fn: Callable,
+    base_fitness_fn: Union[Callable, np.ndarray, List[float]],
     n_samples: int = 100,
     tau: float = 0.1,
     data: Dict[str, Any] = None
@@ -317,10 +679,10 @@ def entropy_regularized_objective(
     ----------
     dist : ParticleDistribution
         Distribution to evaluate
-    base_fitness_fn : Callable
-        Base fitness function
+    base_fitness_fn : Callable or array-like
+        Base fitness function OR pre-computed fitness values
     n_samples : int
-        Number of Monte Carlo samples
+        Number of Monte Carlo samples (if callable)
     tau : float
         Entropy weight (positive encourages diversity)
     data : Dict
@@ -331,8 +693,22 @@ def entropy_regularized_objective(
     float
         Entropy-regularized objective value
     """
-    if data is None:
-        data = {}
+    # Compute entropy H(μ) = -Σ w_i log w_i
+    w = dist.weights
+    # Avoid log(0)
+    w_safe = w[w > 0]
+    entropy = -np.sum(w_safe * np.log(w_safe))
+    
+    # Compute expected fitness
+    if not callable(base_fitness_fn):
+        fv = np.asarray(base_fitness_fn, dtype=float)
+        if len(fv) != dist.K:
+            raise ValueError(f"Fitness array length ({len(fv)}) must match number of particles ({dist.K})")
+        e_fit = np.sum(dist.weights * fv)
+    else:
+        e_fit = mean_objective(dist, base_fitness_fn, n_samples, data)
+    
+    return float(e_fit + tau * entropy)
     
     # Compute mean fitness
     mean_fit = mean_objective(dist, base_fitness_fn, n_samples, data)
@@ -351,104 +727,129 @@ def entropy_regularized_objective(
 # =============================================================================
 
 def compress_top_k(
-    particles: List[Solution],
-    weights: np.ndarray,
-    K: int
-) -> Tuple[List[Solution], np.ndarray]:
+    particles: Union[List[Solution], ParticleDistribution],
+    weights: Optional[np.ndarray] = None,
+    K: Optional[int] = None,
+    **kwargs
+) -> Union[Tuple[List[Solution], np.ndarray], ParticleDistribution]:
     """
     Keep top K particles by weight.
     
     Parameters
     ----------
-    particles : List[Solution]
-        Original particles
-    weights : np.ndarray
-        Original weights
-    K : int
-        Target number of particles
+    particles : List[Solution] or ParticleDistribution
+        Original particles or distribution object
+    weights : np.ndarray, optional
+        Original weights (if particles is a list)
+    K : int, optional
+        Target number of particles. Can also use 'k' as keyword argument.
         
     Returns
     -------
-    Tuple[List[Solution], np.ndarray]
-        Compressed particles and renormalized weights
+    Tuple[List[Solution], np.ndarray] or ParticleDistribution
+        Compressed result (same type as input)
     """
-    if len(particles) <= K:
-        return particles, weights / weights.sum()
+    # Handle keyword argument 'k'
+    if K is None:
+        K = kwargs.get('k')
+    if K is None:
+        raise ValueError("Target size 'K' or 'k' must be specified")
+
+    # Handle ParticleDistribution input
+    is_dist = isinstance(particles, ParticleDistribution)
+    if is_dist:
+        dist = particles
+        p_list = dist.particles
+        w_arr = dist.weights
+    else:
+        p_list = particles
+        w_arr = weights
+        if w_arr is None:
+            raise ValueError("Weights must be provided if particles is a list")
+
+    # Keep top K
+    K_clamped = min(K, len(p_list))
+    top_indices = np.argpartition(w_arr, -K_clamped)[-K_clamped:]
     
-    # Get indices of top K weights
-    top_indices = np.argpartition(weights, -K)[-K:]
-    top_indices = top_indices[np.argsort(-weights[top_indices])]  # Sort descending
+    # Sort them in descending order of weight
+    top_indices = top_indices[np.argsort(w_arr[top_indices])[::-1]]
     
-    # Extract and renormalize
-    new_particles = [particles[i] for i in top_indices]
-    new_weights = weights[top_indices]
+    new_particles = [p_list[i].copy() for i in top_indices]
+    new_weights = w_arr[top_indices]
     new_weights = new_weights / new_weights.sum()
     
+    if is_dist:
+        return ParticleDistribution(new_particles, new_weights)
     return new_particles, new_weights
 
 
 def compress_resampling(
-    particles: List[Solution],
-    weights: np.ndarray,
-    K: int
-) -> Tuple[List[Solution], np.ndarray]:
+    particles: Union[List[Solution], ParticleDistribution],
+    weights: Optional[np.ndarray] = None,
+    K: Optional[int] = None,
+    **kwargs
+) -> Union[Tuple[List[Solution], np.ndarray], ParticleDistribution]:
     """
     Compress via resampling K particles according to weights.
     
     Parameters
     ----------
-    particles : List[Solution]
-        Original particles
-    weights : np.ndarray
-        Original weights
-    K : int
-        Target number of particles
+    particles : List[Solution] or ParticleDistribution
+        Original particles or distribution
+    weights : np.ndarray, optional
+        Original weights (if particles is a list)
+    K : int, optional
+        Target number of particles. Can also use 'k' as keyword argument.
         
     Returns
     -------
-    Tuple[List[Solution], np.ndarray]
-        Resampled particles with uniform weights
+    Tuple[List[Solution], np.ndarray] or ParticleDistribution
+        Resampled result (same type as input)
     """
+    # Handle keyword argument 'k'
+    if K is None:
+        K = kwargs.get('k')
+    if K is None:
+        raise ValueError("Target size 'K' or 'k' must be specified")
+
+    # Handle ParticleDistribution input
+    is_dist = isinstance(particles, ParticleDistribution)
+    if is_dist:
+        dist = particles
+        p_list = dist.particles
+        w_arr = dist.weights
+    else:
+        p_list = particles
+        w_arr = weights
+        if w_arr is None:
+            raise ValueError("Weights must be provided if particles is a list")
+
     # Resample indices
-    indices = np.random.choice(len(particles), size=K, p=weights)
+    indices = np.random.choice(len(p_list), size=K, p=w_arr)
     
     # Extract particles
-    new_particles = [particles[i].copy() for i in indices]
+    new_particles = [p_list[i].copy() for i in indices]
     
     # Uniform weights after resampling
     new_weights = np.ones(K) / K
     
+    if is_dist:
+        return ParticleDistribution(new_particles, new_weights)
     return new_particles, new_weights
 
 
 def compress_kmeans(
-    particles: List[Solution],
-    weights: np.ndarray,
-    K: int
-) -> Tuple[List[Solution], np.ndarray]:
+    particles: Union[List[Solution], ParticleDistribution],
+    weights: Optional[np.ndarray] = None,
+    K: Optional[int] = None,
+    **kwargs
+) -> Union[Tuple[List[Solution], np.ndarray], ParticleDistribution]:
     """
     Compress via clustering (simplified implementation).
     
-    Currently implemented as top-K for robustness.
-    Full k-means clustering would require distance metric on solution space.
-    
-    Parameters
-    ----------
-    particles : List[Solution]
-        Original particles
-    weights : np.ndarray
-        Original weights
-    K : int
-        Target number of particles
-        
-    Returns
-    -------
-    Tuple[List[Solution], np.ndarray]
-        Compressed particles and weights
+    Checks for 'K' or 'k' parameter and delegates to compress_top_k.
     """
-    # Simplified: use top-K
-    # TODO: Implement true clustering if distance metric is available
-    return compress_top_k(particles, weights, K)
+    return compress_top_k(particles, weights, K, **kwargs)
 
 
 # =============================================================================
@@ -456,11 +857,12 @@ def compress_kmeans(
 # =============================================================================
 
 def crossover_particle_mixture(
-    dist1: ParticleDistribution,
-    dist2: ParticleDistribution,
+    dist1: Union[ParticleDistribution, DistributionalSolution],
+    dist2: Union[ParticleDistribution, DistributionalSolution],
     alpha: float = 0.5,
-    K_target: Optional[int] = None
-) -> ParticleDistribution:
+    K_target: Optional[int] = None,
+    **kwargs
+) -> Union[ParticleDistribution, DistributionalSolution]:
     """
     Crossover by forming mixture of two distributions and compressing.
     
@@ -468,30 +870,42 @@ def crossover_particle_mixture(
     
     Parameters
     ----------
-    dist1 : ParticleDistribution
+    dist1 : ParticleDistribution or DistributionalSolution
         First parent distribution
-    dist2 : ParticleDistribution
+    dist2 : ParticleDistribution or DistributionalSolution
         Second parent distribution
     alpha : float
-        Mixture weight for dist1
+        Mixture weight for dist1. Can also use 'crossintensity'.
     K_target : int, optional
         Target number of particles (default: max of parents' K)
         
     Returns
     -------
-    ParticleDistribution
-        Child distribution
+    ParticleDistribution or DistributionalSolution
+        Child distribution (type matches dist1)
     """
+    # Handle parameter alias
+    if alpha == 0.5:  # Default value
+        alpha = kwargs.get(
+            'crossintensity',
+            kwargs.get('mix_prob', kwargs.get('mixprob', alpha))
+        )
+
+    # Handle DistributionalSolution input
+    is_sol = isinstance(dist1, DistributionalSolution)
+    d1 = dist1.distribution if is_sol else dist1
+    d2 = dist2.distribution if isinstance(dist2, DistributionalSolution) else dist2
+    
     # Form mixture
-    mixed_particles = dist1.particles + dist2.particles
+    mixed_particles = d1.particles + d2.particles
     mixed_weights = np.concatenate([
-        alpha * dist1.weights,
-        (1 - alpha) * dist2.weights
+        alpha * d1.weights,
+        (1 - alpha) * d2.weights
     ])
     
     # Compress if needed
     if K_target is None:
-        K_target = max(dist1.K, dist2.K)
+        K_target = max(d1.K, d2.K)
     
     if len(mixed_particles) > K_target:
         compressed_particles, compressed_weights = compress_top_k(
@@ -501,13 +915,18 @@ def crossover_particle_mixture(
         compressed_particles = mixed_particles
         compressed_weights = mixed_weights / mixed_weights.sum()
     
-    return ParticleDistribution(compressed_particles, compressed_weights)
+    child_dist = ParticleDistribution(compressed_particles, compressed_weights)
+    
+    if is_sol:
+        return DistributionalSolution(child_dist)
+    return child_dist
 
 
 def mutate_weights(
-    dist: ParticleDistribution,
-    weight_intensity: float = 0.1
-) -> ParticleDistribution:
+    dist: Union[ParticleDistribution, DistributionalSolution],
+    weight_intensity: float = 0.1,
+    **kwargs
+) -> Union[ParticleDistribution, DistributionalSolution]:
     """
     Mutate distribution weights via logit perturbation.
     
@@ -515,19 +934,30 @@ def mutate_weights(
     
     Parameters
     ----------
-    dist : ParticleDistribution
+    dist : ParticleDistribution or DistributionalSolution
         Distribution to mutate
     weight_intensity : float
-        Perturbation scale
+        Perturbation scale. Can also use 'mutintensity'.
         
     Returns
     -------
-    ParticleDistribution
-        Mutated distribution (new object)
+    ParticleDistribution or DistributionalSolution
+        Mutated distribution (type matches input)
     """
+    # Handle parameter alias
+    if weight_intensity == 0.1:  # Default value
+        weight_intensity = kwargs.get(
+            'mutation_strength',
+            kwargs.get('mutintensity', weight_intensity)
+        )
+
+    # Handle DistributionalSolution input
+    is_sol = isinstance(dist, DistributionalSolution)
+    d = dist.distribution if is_sol else dist
+
     # Convert to logits
     eps = 1e-10
-    weights = np.clip(dist.weights, eps, 1 - eps)
+    weights = np.clip(d.weights, eps, 1 - eps)
     logits = np.log(weights / (1 - weights))
     
     # Add noise
@@ -539,44 +969,60 @@ def mutate_weights(
     new_weights = new_weights / new_weights.sum()
     
     # Create new distribution with same particles but new weights
-    new_particles = [p.copy() for p in dist.particles]
+    new_particles = [p.copy() for p in d.particles]
     
-    return ParticleDistribution(new_particles, new_weights)
+    new_dist = ParticleDistribution(new_particles, new_weights)
+    
+    if is_sol:
+        return DistributionalSolution(new_dist)
+    return new_dist
 
 
 def mutate_support(
-    dist: ParticleDistribution,
-    base_mutate_fn: Callable,
+    dist: Union[ParticleDistribution, DistributionalSolution],
+    base_mutate_fn: Optional[Callable],
     candidates: List[List[int]],
     settypes: List[str],
     support_prob: float = 0.5,
-    mutintensity: float = 0.1
-) -> ParticleDistribution:
+    mutintensity: float = 0.1,
+    **kwargs
+) -> Union[ParticleDistribution, DistributionalSolution]:
     """
     Mutate support points using base mutation operator.
     
     Parameters
     ----------
-    dist : ParticleDistribution
+    dist : ParticleDistribution or DistributionalSolution
         Distribution to mutate
-    base_mutate_fn : Callable
-        Base mutation function (e.g., from operators.py)
+    base_mutate_fn : Callable, optional
+        Base mutation function (e.g., from operators.py). Defaults to trainselpy.operators.mutation.
     candidates : List[List[int]]
         Candidates for base decision variables
     settypes : List[str]
         Set types for base variables
     support_prob : float
-        Probability of mutating each particle
+        Probability of mutating each particle. Can also use 'mutprob' or 'mutation_prob'.
     mutintensity : float
         Mutation intensity
         
     Returns
     -------
-    ParticleDistribution
-        Mutated distribution
+    ParticleDistribution or DistributionalSolution
+        Mutated distribution (type matches input)
     """
+    if base_mutate_fn is None:
+        # Default to the standard mutation operator for convenience/backward compatibility
+        from trainselpy.operators import mutation as base_mutate_fn  # Local import to avoid cycles
+
+    # Handle parameter aliases
+    if support_prob == 0.5:  # Default value
+        support_prob = kwargs.get('mutprob', kwargs.get('mutation_prob', support_prob))
+    # Handle DistributionalSolution input
+    is_sol = isinstance(dist, DistributionalSolution)
+    d = dist.distribution if is_sol else dist
+
     # Copy particles
-    new_particles = [p.copy() for p in dist.particles]
+    new_particles = [p.copy() for p in d.particles]
     
     # Apply base mutation to particles
     base_mutate_fn(
@@ -588,25 +1034,30 @@ def mutate_support(
     )
     
     # Keep same weights
-    new_weights = dist.weights.copy()
+    new_weights = d.weights.copy()
     
-    return ParticleDistribution(new_particles, new_weights)
+    new_dist = ParticleDistribution(new_particles, new_weights)
+    
+    if is_sol:
+        return DistributionalSolution(new_dist)
+    return new_dist
 
 
 def birth_death_mutation(
-    dist: ParticleDistribution,
+    dist: Union[ParticleDistribution, DistributionalSolution],
     candidates: List[List[int]],
     setsizes: List[int],
     settypes: List[str],
     birth_rate: float = 0.1,
-    death_rate: float = 0.1
-) -> ParticleDistribution:
+    death_rate: float = 0.1,
+    **kwargs
+) -> Union[ParticleDistribution, DistributionalSolution]:
     """
     Birth-death mutation: add and remove particles.
     
     Parameters
     ----------
-    dist : ParticleDistribution
+    dist : ParticleDistribution or DistributionalSolution
         Distribution to mutate
     candidates : List[List[int]]
         Candidates for new particles
@@ -621,25 +1072,32 @@ def birth_death_mutation(
         
     Returns
     -------
-    ParticleDistribution
-        Mutated distribution
+    ParticleDistribution or DistributionalSolution
+        Mutated distribution (type matches input)
     """
+    # Handle parameter aliases if any (none common yet but added for consistency)
+    birth_rate = kwargs.get('birth_prob', birth_rate)
+    death_rate = kwargs.get('death_prob', death_rate)
     from trainselpy.algorithms import initialize_population
     
+    # Handle DistributionalSolution input
+    is_sol = isinstance(dist, DistributionalSolution)
+    d = dist.distribution if is_sol else dist
+
     # Death: remove lowest-weight particles
-    n_death = max(0, int(death_rate * dist.K))
-    if n_death > 0 and n_death < dist.K:
+    n_death = max(0, int(death_rate * d.K))
+    if n_death > 0 and n_death < d.K:
         # Keep top (K - n_death) particles
-        keep_indices = np.argpartition(dist.weights, -dist.K + n_death)[-dist.K + n_death:]
-        new_particles = [dist.particles[i] for i in keep_indices]
-        new_weights = dist.weights[keep_indices]
+        keep_indices = np.argpartition(d.weights, -d.K + n_death)[-d.K + n_death:]
+        new_particles = [d.particles[i] for i in keep_indices]
+        new_weights = d.weights[keep_indices]
         new_weights = new_weights / new_weights.sum()
     else:
-        new_particles = [p.copy() for p in dist.particles]
-        new_weights = dist.weights.copy()
+        new_particles = [p.copy() for p in d.particles]
+        new_weights = d.weights.copy()
     
     # Birth: add new random particles
-    n_birth = max(0, int(birth_rate * dist.K))
+    n_birth = max(0, int(birth_rate * d.K))
     if n_birth > 0:
         # Generate new particles
         new_born = initialize_population(candidates, setsizes, settypes, pop_size=n_birth)
@@ -655,4 +1113,8 @@ def birth_death_mutation(
         new_particles.extend(new_born)
         new_weights = np.concatenate([new_weights, np.full(n_birth, birth_weight)])
     
-    return ParticleDistribution(new_particles, new_weights)
+    new_dist = ParticleDistribution(new_particles, new_weights)
+    
+    if is_sol:
+        return DistributionalSolution(new_dist)
+    return new_dist

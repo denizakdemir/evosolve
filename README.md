@@ -72,6 +72,7 @@ pip install seaborn
   - Simulated Annealing (SANN): Fine-tuning solutions
   - Island Model: Multiple populations evolving in parallel
   - Multi-objective optimization (NSGA-II/NSGA-III) with diverse Pareto front solutions
+  - Distributional head with NSGA selection on distribution means (`dist_use_nsga_means`) to avoid scalarization collapse
   - **Neural Network-Enhanced Optimization**: VAE and GAN for learning solution distributions
   - **CMA-ES Integration**: Covariance Matrix Adaptation for continuous optimization
   - **Surrogate Models**: Gaussian Process models for expensive fitness functions

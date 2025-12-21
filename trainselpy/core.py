@@ -4,7 +4,7 @@ Core module implementing the main functionality of TrainSelPy.
 
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Callable, Union, Optional, Any, TypedDict
+from typing import List, Dict, Callable, Union, Optional, Any, TypedDict, Tuple
 from dataclasses import dataclass
 import time
 from joblib import Parallel, delayed
@@ -295,7 +295,13 @@ def train_sel_control(
     dist_alpha: float = 0.1,
     dist_tau: float = 0.1,
     dist_weight_mutation_prob: float = 0.5,
-    dist_support_mutation_prob: float = 0.5
+    dist_support_mutation_prob: float = 0.5,
+    dist_birth_death_prob: float = 0.0,
+    dist_birth_rate: float = 0.1,
+    dist_death_rate: float = 0.1,
+    dist_hv_ref: Optional[Tuple[float, float]] = None,
+    dist_eval_mode: str = "sample",
+    dist_use_nsga_means: bool = False,
 ) -> ControlParams:
     """
     Create a control object for the TrainSel function.
@@ -400,6 +406,20 @@ def train_sel_control(
         Probability of mutating distribution weights.
     dist_support_mutation_prob : float
         Probability of mutating distribution support (particles).
+    dist_birth_death_prob : float
+        Probability of applying birth/death mutation to refresh particles.
+    dist_birth_rate : float
+        Fraction of particles to add during birth mutation.
+    dist_death_rate : float
+        Fraction of particles to remove during death mutation.
+    dist_hv_ref : Tuple[float, float], optional
+        Reference point for hypervolume-based objectives (maximization).
+    dist_eval_mode : str
+        How distributional objectives are aggregated: "sample" (Monte Carlo) or
+        "weighted" (deterministic particle-weighted evaluation).
+    dist_use_nsga_means : bool
+        If True, expose distribution mean objectives for NSGA selection even when
+        running with scalarized distributional objectives.
         
     Returns
     -------
@@ -460,7 +480,13 @@ def train_sel_control(
         "dist_alpha": dist_alpha,
         "dist_tau": dist_tau,
         "dist_weight_mutation_prob": dist_weight_mutation_prob,
-        "dist_support_mutation_prob": dist_support_mutation_prob
+        "dist_support_mutation_prob": dist_support_mutation_prob,
+        "dist_birth_death_prob": dist_birth_death_prob,
+        "dist_birth_rate": dist_birth_rate,
+        "dist_death_rate": dist_death_rate,
+        "dist_hv_ref": dist_hv_ref,
+        "dist_eval_mode": dist_eval_mode,
+        "dist_use_nsga_means": dist_use_nsga_means
     }
     
     return control
@@ -730,7 +756,10 @@ def train_sel(
         fitness_history=result["fitness_history"],
         execution_time=execution_time,
         pareto_front=result.get("pareto_front", None),
-        pareto_solutions=result.get("pareto_solutions", None)
+        pareto_solutions=result.get("pareto_solutions", None),
+        distribution=result.get("distribution", None),
+        particle_solutions=result.get("particle_solutions", None),
+        particle_weights=result.get("particle_weights", None)
     )
     
     if verbose:

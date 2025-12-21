@@ -284,42 +284,75 @@ def evaluate_fitness(
 
     # Check if this is distributional optimization
     from trainselpy.distributional_head import (
-        DistributionalSolution, mean_objective, mean_variance_objective, 
-        cvar_objective, entropy_regularized_objective
+        DistributionalSolution,
+        aggregate_distributional_objectives,
+        evaluate_particle_objectives,
+        sample_distribution_objectives
     )
     
     if population and isinstance(population[0], DistributionalSolution):
         # Distributional evaluation
         obj_type = control.get("dist_objective", "mean") if control else "mean"
         n_samples = control.get("dist_n_samples", 20) if control else 20
-        
+        eval_mode = control.get("dist_eval_mode", "sample") if control else "sample"
+        lambda_var = control.get("dist_lambda_var", 1.0) if control else 1.0
+        alpha = control.get("dist_alpha", 0.1) if control else 0.1
+        tau = control.get("dist_tau", 0.1) if control else 0.1
+        maximize = control.get("dist_maximize", True) if control else True
+        hv_ref = control.get("dist_hv_ref", None) if control else None
+        use_nsga_means = control.get("dist_use_nsga_means", False) if control else False
+
         for sol in population:
-            if obj_type == "mean":
-                fit = mean_objective(sol.distribution, stat_func, n_samples, data)
-            elif obj_type == "mean_variance":
-                lambda_var = control.get("dist_lambda_var", 1.0)
-                fit = mean_variance_objective(
-                    sol.distribution, stat_func, n_samples, lambda_var, data
-                )
-            elif obj_type == "cvar":
-                alpha = control.get("dist_alpha", 0.1)
-                fit = cvar_objective(
-                    sol.distribution, stat_func, n_samples, alpha, True, data
-                )
-            elif obj_type == "entropy":
-                tau = control.get("dist_tau", 0.1)
-                fit = entropy_regularized_objective(
-                    sol.distribution, stat_func, n_samples, tau, data
-                )
+            if eval_mode == "weighted":
+                values = evaluate_particle_objectives(sol.distribution, stat_func, data)
+                weights = sol.distribution.weights
             else:
-                # Default to mean
-                fit = mean_objective(sol.distribution, stat_func, n_samples, data)
-            
-            sol.fitness = float(fit)
-            if n_stat > 1:
-                # For multi-objective, replicate single fitness
-                # TODO: Support separate objectives for each particle
-                sol.multi_fitness = [fit] * n_stat
+                values = sample_distribution_objectives(sol.distribution, stat_func, n_samples, data)
+                weights = None
+
+            agg = aggregate_distributional_objectives(
+                values,
+                weights=weights,
+                objective_type=obj_type,
+                lambda_var=lambda_var,
+                alpha=alpha,
+                tau=tau,
+                maximize=maximize,
+                entropy_weights=sol.distribution.weights,
+                hv_ref=hv_ref
+            )
+
+            agg_list = agg.tolist() if getattr(agg, "ndim", 0) > 0 else [float(agg)]
+
+            mean_list = None
+            if use_nsga_means:
+                # Always expose mean objectives for selection pressure (ignores scalarization)
+                mean_vals = aggregate_distributional_objectives(
+                    values,
+                    weights=weights if eval_mode == "weighted" else None,
+                    objective_type="mean",
+                    lambda_var=lambda_var,
+                    alpha=alpha,
+                    tau=tau,
+                    maximize=maximize,
+                    entropy_weights=sol.distribution.weights,
+                    hv_ref=hv_ref
+                )
+                mean_list = mean_vals.tolist() if getattr(mean_vals, "ndim", 0) > 0 else [float(mean_vals)]
+
+            if use_nsga_means:
+                sol.multi_fitness = mean_list if mean_list is not None else agg_list
+                sol.fitness = float(sum(sol.multi_fitness)) if sol.multi_fitness else float("-inf")
+                sol._dist_aggregate_objectives = agg_list
+            elif n_stat > 1:
+                if len(agg_list) != n_stat:
+                    raise ValueError(
+                        f"Distributional evaluation returned {len(agg_list)} objectives; expected {n_stat}"
+                    )
+                sol.multi_fitness = agg_list
+                sol.fitness = float(sum(sol.multi_fitness))
+            else:
+                sol.fitness = float(agg_list[0])
         return
 
     # Check if we have integer and/or double variables
@@ -992,7 +1025,21 @@ def _select_next_generation(
     # Update combined_pop to be the unique version
     combined_pop = unique_pop
 
-    if n_stat > 1:
+    dist_nsga_means = control.get("dist_use_nsga_means", False) if control else False
+    effective_n_stat = n_stat
+    if dist_nsga_means:
+        inferred = max(
+            (
+                len(getattr(sol, "multi_fitness", []))
+                for sol in combined_pop
+                if getattr(sol, "multi_fitness", [])
+            ),
+            default=0,
+        )
+        if inferred > effective_n_stat:
+            effective_n_stat = inferred
+
+    if effective_n_stat > 1:
         if use_nsga3 and reference_points is not None:
             # Use NSGA-III selection
             return nsga3_selection(combined_pop, pop_size, reference_points)
@@ -1889,7 +1936,7 @@ def genetic_algorithm(
             )
             
             distributional_mutation(
-                offspring, candidates, settypes, mut_prob, mut_intensity, control
+                offspring, candidates, settypes, setsizes, mut_prob, mut_intensity, control
             )
         else:
             if "crossover_func" in control:
@@ -1972,35 +2019,40 @@ def genetic_algorithm(
 
         # --- Apply simulated annealing (SA) on elite solutions periodically ---
         # Changed to apply every sann_frequency generations instead of every generation for efficiency
-        if n_iter_sann > 0 and (gen % sann_frequency == 0 or gen == n_iterations - 1):
-            # For single-objective, population is already sorted from elitism
-            # For multi-objective, we need to sort by scalar fitness
-            if n_stat > 1:
-                sorted_pop = sorted(population, key=lambda x: x.fitness, reverse=True)
-            else:
-                # Already sorted from elitism step
-                sorted_pop = population
+        # Skip SA for distributional optimization (not yet supported)
+        from trainselpy.distributional_head import DistributionalSolution
+        if population and isinstance(population[0], DistributionalSolution):
+            pass
+        else:
+            if n_iter_sann > 0 and (gen % sann_frequency == 0 or gen == n_iterations - 1):
+                # For single-objective, population is already sorted from elitism
+                # For multi-objective, we need to sort by scalar fitness
+                if n_stat > 1:
+                    sorted_pop = sorted(population, key=lambda x: x.fitness, reverse=True)
+                else:
+                    # Already sorted from elitism step
+                    sorted_pop = population
 
-            # Apply SA to each elite individual
-            for i in range(min(n_elite_saved, len(sorted_pop))):
-                refined = simulated_annealing(
-                    sorted_pop[i],
-                    candidates,
-                    settypes,
-                    stat_func,
-                    data,
-                    n_stat,
-                    n_iter_sann,
-                    temp_init,
-                    temp_final
-                )
-                # Replace the original if the refined solution is better
-                # For both single and multi-objective, SA already performs acceptance
-                # based on fitness improvement, so we simply use the refined solution
-                # if it has better scalar fitness (sum for multi-objective)
-                if refined.fitness > sorted_pop[i].fitness:
-                    sorted_pop[i] = refined.copy()
-            # Update the population with the refined elites
+                # Apply SA to each elite individual
+                for i in range(min(n_elite_saved, len(sorted_pop))):
+                    refined = simulated_annealing(
+                        sorted_pop[i],
+                        candidates,
+                        settypes,
+                        stat_func,
+                        data,
+                        n_stat,
+                        n_iter_sann,
+                        temp_init,
+                        temp_final
+                    )
+                    # Replace the original if the refined solution is better
+                    # For both single and multi-objective, SA already performs acceptance
+                    # based on fitness improvement, so we simply use the refined solution
+                    # if it has better scalar fitness (sum for multi-objective)
+                    if refined.fitness > sorted_pop[i].fitness:
+                        sorted_pop[i] = refined.copy()
+                # Update the population with the refined elites
             for i in range(min(n_elite_saved, len(sorted_pop))):
                 population[i] = sorted_pop[i].copy()
         # -------------------------------------------------------------------------------
@@ -2193,45 +2245,95 @@ def genetic_algorithm(
                     print(f"Warning: Callback raised exception at generation {gen}: {e}")
 
     # Process the result
+    from trainselpy.distributional_head import DistributionalSolution
+    
     if n_stat == 1:
+        if isinstance(best_solution, DistributionalSolution):
+            # For distributional solutions, use first particle as representative for basic API
+            sel_ind = best_solution.distribution.particles[0].int_values if best_solution.distribution.particles else []
+            sel_val = best_solution.distribution.particles[0].dbl_values if best_solution.distribution.particles else []
+        else:
+            sel_ind = best_solution.int_values
+            sel_val = best_solution.dbl_values
+            
         result = {
-            "selected_indices": best_solution.int_values,
-            "selected_values": best_solution.dbl_values,
+            "selected_indices": sel_ind,
+            "selected_values": sel_val,
             "fitness": best_solution.fitness,
-
+            "fitness_history": fitness_history
         }
+    else:
+        # Multi-objective result processing
+        from trainselpy.distributional_head import DistributionalSolution  # Local import to avoid cycles
+
+        is_dist = isinstance(best_solution, DistributionalSolution)
+
+        # Use fast_non_dominated_sort to get the true Pareto front
+        fronts = fast_non_dominated_sort(population)
+        pareto_solutions = fronts[0] if fronts else []  # First front is the Pareto front
         
         # Apply solution diversity filtering if enabled
-        if pareto_solutions:
-            unique_pareto = []
-            seen_hashes = set()
-            
-            for sol in pareto_solutions:
-                sol_hash = sol.get_hash()
-                if sol_hash not in seen_hashes:
-                    unique_pareto.append(sol)
-                    seen_hashes.add(sol_hash)
-            
-            pareto_solutions = unique_pareto
+        unique_pareto = []
+        seen_hashes = set()
+        
+        for sol in pareto_solutions:
+            sol_hash = sol.get_hash()
+            if sol_hash not in seen_hashes:
+                unique_pareto.append(sol)
+                seen_hashes.add(sol_hash)
+        
+        pareto_solutions = unique_pareto
         
         # Extract fitness values for the Pareto front
         pareto_front = [sol.multi_fitness for sol in pareto_solutions]
+
+        # Representative indices/values for compatibility with existing API
+        if is_dist:
+            rep_particle = best_solution.distribution.particles[0] if best_solution.distribution.particles else None
+            sel_ind = rep_particle.int_values if rep_particle else []
+            sel_val = rep_particle.dbl_values if rep_particle else []
+        else:
+            sel_ind = best_solution.int_values
+            sel_val = best_solution.dbl_values
         
         result = {
-            "selected_indices": best_solution.int_values,
-            "selected_values": best_solution.dbl_values,
+            "selected_indices": sel_ind,
+            "selected_values": sel_val,
             "fitness": best_solution.fitness,
+            "fitness_history": fitness_history,
             "pareto_front": pareto_front,
             "pareto_solutions": [
                 {
-                    "selected_indices": sol.int_values,
-                    "selected_values": sol.dbl_values,
-                    "multi_fitness": sol.multi_fitness
+                    "selected_indices": (
+                        sol.distribution.particles[0].int_values if isinstance(sol, DistributionalSolution) and sol.distribution.particles else getattr(sol, "int_values", [])
+                    ),
+                    "selected_values": (
+                        sol.distribution.particles[0].dbl_values if isinstance(sol, DistributionalSolution) and sol.distribution.particles else getattr(sol, "dbl_values", [])
+                    ),
+                    "multi_fitness": sol.multi_fitness,
+                    "distribution": sol.distribution if isinstance(sol, DistributionalSolution) else None,
+                    "particle_weights": sol.distribution.weights if isinstance(sol, DistributionalSolution) else None,
                 }
                 for sol in pareto_solutions
             ]
         }
-    
+
+    # Extract distributional results if applicable
+    dist_obj = getattr(best_solution, "distribution", None)
+    if dist_obj:
+        result["distribution"] = dist_obj
+        result["particle_solutions"] = getattr(dist_obj, "particles", None)
+        result["particle_weights"] = getattr(dist_obj, "weights", None)
+    else:
+        # Check if maybe best_solution IS the distribution (unlikely but safe)
+        if hasattr(best_solution, "particles") and hasattr(best_solution, "weights"):
+            result["distribution"] = best_solution
+            result["particle_solutions"] = best_solution.particles
+            result["particle_weights"] = best_solution.weights
+        else:
+            result["distribution"] = None
+            result["particle_solutions"] = None
+            result["particle_weights"] = None
     return result
 
 

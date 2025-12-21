@@ -64,10 +64,17 @@ def run_standard_ga():
     )
     
     # Extract best solution
-    best_sol = result.selected_values[0] if hasattr(result, 'selected_values') else None
-    if best_sol is None:
-        # Fallback: compute from selected_indices
+    # selected_indices holds the BOOL/INT values, selected_values holds DBL values
+    if result.selected_values and len(result.selected_values) > 0:
+        best_sol = result.selected_values[0]
+    elif result.selected_indices and len(result.selected_indices) > 0:
         best_sol = np.array(result.selected_indices[0])
+    else:
+        best_sol = None
+    
+    if best_sol is None:
+        print("Error: Could not extract best solution")
+        return result
     
     best_sum = np.sum(best_sol)
     

@@ -37,117 +37,110 @@ def main():
     print("DISTRIBUTIONAL HEAD CORE COMPONENTS DEMONSTRATION")
     print("=" * 70)
     
-    # Create some particles (binary solutions)
-    print("\n1. Creating Particle Distribution")
+    # 1. Create mixed-type particles
+    print("\n1. Creating Mixed-Type Particle Distribution")
     print("-" * 70)
     particles = []
     for i in range(10):
-        bits = np.random.randint(0, 2, size=20)
-        sol = Solution(int_values=[bits], fitness=float(np.sum(bits)))
+        # Mixed: 10 binary bits + 2 continuous values
+        bits = np.random.randint(0, 2, size=10)
+        dbls = np.random.rand(2)
+        sol = Solution(int_values=[bits], dbl_values=[dbls])
+        # We'll assign dummy fitness for now
+        sol.fitness = float(np.sum(bits) + np.sum(dbls))
         particles.append(sol)
     
+    # Random weights
     weights = np.random.rand(10)
-    weights = weights / weights.sum()  # Normalize
+    weights = weights / weights.sum()
     
     dist = ParticleDistribution(particles, weights)
-    print(f"Created distribution with K={dist.K} particles")
-    print(f"Weights sum: {dist.weights.sum():.6f} (should be 1.0)")
+    print(f"Created mixed-type distribution (BOOL + DBL) with K={dist.K} particles")
+    print(f"Base structure: {dist.get_base_structure()}")
     
-    # Sampling
-    print("\n2. Sampling from Distribution")
+    # 2. Sampling
+    print("\n2. Sampling and Diversity")
     print("-" * 70)
-    samples = dist.sample(5)
-    print(f"Sampled {len(samples)} solutions from distribution")
-    sums = [np.sum(s.int_values[0]) for s in samples]
-    print(f"Sample sums: {sums}")
+    samples = dist.sample(1000)
+    sample_sums = [np.sum(s.int_values[0]) for s in samples]
+    unique_vals, counts = np.unique(sample_sums, return_counts=True)
     
-    # Objective functionals
-    print("\n3. Objective Functionals")
+    print("Sampled 1000 solutions. Distribution of bit-sums:")
+    for val, count in zip(unique_vals, counts):
+        bar = "#" * (count // 20)
+        print(f"  Sum {val:2}: {bar} ({count/10:.1f}%)")
+    
+    # 3. Flexible Objective Functionals
+    print("\n3. Flexible Objective Functionals (New!)")
     print("-" * 70)
     
-    mean_fit = mean_objective(dist, simple_binary_fitness, n_samples=100)
-    print(f"Mean objective:      {mean_fit:.2f}")
+    # Method A: Continuous/MC Evaluation (Callable)
+    def my_fitness_fn(int_vals, dbl_vals, data):
+        return float(np.sum(int_vals[0]) + np.sum(dbl_vals[0]))
     
-    mv_fit = mean_variance_objective(dist, simple_binary_fitness, n_samples=100, lambda_var=-0.5)
-    print(f"Mean-variance (λ=-0.5): {mv_fit:.2f} (lower due to variance penalty)")
+    mc_mean = mean_objective(dist, my_fitness_fn, n_samples=100)
+    print(f"Mean (MC Sampling, n=100):   {mc_mean:.4f}")
     
-    cvar_fit = cvar_objective(dist, simple_binary_fitness, n_samples=100, alpha=0.2)
-    print(f"CVaR (α=0.2):        {cvar_fit:.2f} (tail risk focus)")
+    # Method B: Discrete/Exact Evaluation (Pre-computed Array)
+    # This is useful when you've already evaluated particles and just want to re-weight
+    particle_fitness = np.array([p.fitness for p in dist.particles])
+    exact_mean = mean_objective(dist, particle_fitness)
+    print(f"Mean (Pre-computed Array):    {exact_mean:.4f} (Exact!)")
     
-    entropy_fit = entropy_regularized_objective(dist, simple_binary_fitness, n_samples=100, tau=0.5)
-    print(f"Entropy reg (τ=0.5): {entropy_fit:.2f} (diversity bonus)")
+    # Demonstrate other exact objectives
+    exact_mv = mean_variance_objective(dist, particle_fitness, lambda_var=-1.0)
+    print(f"Mean-Var (Exact, λ=-1.0):    {exact_mv:.4f}")
     
-    # Distribution operators
+    exact_cvar = cvar_objective(dist, particle_fitness, alpha=0.3, maximize=True)
+    print(f"CVaR (Exact, α=0.3):          {exact_cvar:.4f}")
+    
+    exact_ent = entropy_regularized_objective(dist, particle_fitness, tau=0.5)
+    print(f"Entropy-Reg (Exact, τ=0.5):   {exact_ent:.4f}")
+    
+    # 4. Distribution Operators
     print("\n4. Distribution Operators")
     print("-" * 70)
     
-    # Create second distribution
-    particles2 = []
-    for i in range(10):
-        bits = np.random.randint(0, 2, size=20)
-        sol = Solution(int_values=[bits])
-        particles2.append(sol)
+    # Crossover: Mixture of two distributions
+    dist2 = ParticleDistribution([p.copy() for p in particles], np.ones(10)/10)
+    child_dist = crossover_particle_mixture(dist, dist2, alpha=0.3)
+    print(f"Crossover: 30/70 mixture created K={child_dist.K} child")
     
-    weights2 = np.ones(10) / 10
-    dist2 = ParticleDistribution(particles2, weights2)
+    # Mutation: Weight drift
+    mut_dist = mutate_weights(dist, weight_intensity=0.2)
+    print(f"Weight Mutation: Max weight shift = {np.max(np.abs(mut_dist.weights - dist.weights)):.4f}")
     
-    # Crossover
-    child_dist = crossover_particle_mixture(dist, dist2, alpha=0.5, K_target=10)
-    print(f"Crossover: Combined 2 parent distributions → child with K={child_dist.K}")
-    
-    # Weight mutation
-    mutated_dist = mutate_weights(dist, weight_intensity=0.1)
-    weight_change = np.linalg.norm(mutated_dist.weights - dist.weights)
-    print(f"Weight mutation: Changed weights by {weight_change:.4f}")
-    
-    # Support mutation
-    support_mutated = mutate_support(
-        dist,
-        base_mutate_fn=mutation,  # Use mutation directly
-        candidates=[[0, 1]],
-        settypes=["BOOL"],
-        support_prob=0.5,
-        mutintensity=0.1
-    )
-    print(f"Support mutation: Mutated particles using base BOOL mutation operator")
-    
-    # Compression
-    print("\n5. Compression Strategies")
+    # 5. Result Extraction (Integrated GA Style)
+    print("\n5. GA Integration: Result Dataclass")
     print("-" * 70)
+    from trainselpy.core import TrainSelResult
     
-    # Create large distribution
-    many_particles = []
-    for i in range(50):
-        bits = np.random.randint(0, 2, size=20)
-        sol = Solution(int_values=[bits])
-        many_particles.append(sol)
-    
-    many_weights = np.random.rand(50)
-    many_weights = many_weights / many_weights.sum()
-    
-    big_dist = ParticleDistribution(many_particles, many_weights)
-    print(f"Created large distribution with K={big_dist.K}")
-    
-    compressed_particles, compressed_weights = compress_top_k(
-        big_dist.particles,
-        big_dist.weights,
-        K=10
+    # Simulate a result coming from train_sel()
+    result = TrainSelResult(
+        selected_indices=particles[0].int_values,
+        selected_values=particles[0].dbl_values,
+        fitness=exact_mean,
+        fitness_history=[exact_mean],
+        execution_time=0.1,
+        distribution=dist,
+        particle_solutions=particles,
+        particle_weights=weights
     )
     
-    compressed_dist = ParticleDistribution(compressed_particles, compressed_weights)
-    print(f"Compressed to K={compressed_dist.K} (kept top-weighted particles)")
-    print(f"Weight coverage: {np.sum(compressed_weights):.2%} of original mass")
+    print(f"Result contains distribution: {result.distribution is not None}")
+    print(f"Accessing best particle sum: {np.sum(result.particle_solutions[0].int_values[0])}")
     
     print("\n" + "=" * 70)
     print("SUMMARY")
     print("=" * 70)
-    print("✓ ParticleDistribution: Represents weighted particle distributions")
-    print("✓ 4 Objective functionals: mean, mean-variance, CVaR, entropy")
-    print("✓ 4 Distribution operators: crossover, weight mutation, support mutation, birth-death")
-    print("✓ 3 Compression strategies: top-k, resampling, k-means")
-    print("\nCore components are fully functional!")
-    print("Next step: Integration with GA infrastructure (train_sel API)")
+    print("✓ Full support for mixed-type ParticleDistributions")
+    print("✓ Flexible Objectives: Support both Callables and pre-computed Arrays")
+    print("✓ Exact Discrete Evaluation: Noise-free metrics via Array inputs")
+    print("✓ GA-Ready: Integrated into TrainSelResult and Core APIs")
+    print("\nCore components are fully expanded and verified!")
 
 
 if __name__ == "__main__":
     main()
+
+

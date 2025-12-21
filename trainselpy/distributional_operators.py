@@ -94,6 +94,7 @@ def distributional_mutation(
     offspring: List[DistributionalSolution],
     candidates: List[List[int]],
     settypes: List[str],
+    setsizes: List[int],
     mutprob: float,
     mutintensity: float,
     control: Dict[str, Any]
@@ -128,6 +129,10 @@ def distributional_mutation(
     weight_mut_prob = control.get("dist_weight_mutation_prob", 0.5)
     support_mut_prob = control.get("dist_support_mutation_prob", 0.5)
     
+    birth_death_prob = control.get("dist_birth_death_prob", 0.0)
+    birth_rate = control.get("dist_birth_rate", 0.1)
+    death_rate = control.get("dist_death_rate", 0.1)
+
     for sol in offspring:
         # Mutate weights
         if np.random.rand() < weight_mut_prob:
@@ -145,6 +150,17 @@ def distributional_mutation(
                 settypes=base_settypes,
                 support_prob=mutprob,
                 mutintensity=mutintensity
+            )
+
+        # Optional birth-death mutation to refresh supports
+        if birth_death_prob > 0 and np.random.rand() < birth_death_prob:
+            sol.distribution = birth_death_mutation(
+                sol.distribution,
+                candidates=candidates,
+                setsizes=setsizes,
+                settypes=base_settypes,
+                birth_rate=birth_rate,
+                death_rate=death_rate
             )
 
 

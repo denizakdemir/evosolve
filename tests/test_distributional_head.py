@@ -7,7 +7,13 @@ Following TDD methodology - tests written before implementation.
 import pytest
 import numpy as np
 from trainselpy.solution import Solution
-from trainselpy.algorithms import initialize_population
+from trainselpy.algorithms import (
+    initialize_population,
+    evaluate_fitness,
+    _select_next_generation,
+)
+from trainselpy.selection import fast_non_dominated_sort
+from trainselpy.core import train_sel_control
 
 # Tests will be written for distributional_head module
 try:
@@ -516,6 +522,15 @@ class TestDistributionalMultiobjective:
             return float(np.sum(int_vals[0]))
         return 0.0
     
+    def two_objective_fitness(self, int_vals, dbl_vals, data=None):
+        """Return a two-objective vector (sum, negative sum) for trade-offs."""
+        if isinstance(int_vals, (list, tuple)) and len(int_vals) > 0:
+            core = int_vals[0]
+        else:
+            core = int_vals
+        score = float(np.sum(core)) if core is not None else 0.0
+        return [score, -score]
+    
     def test_multi_fitness_on_dist_solution(self):
         """Test that DistributionalSolution supports multi-fitness."""
         particles = [
@@ -573,6 +588,139 @@ class TestDistributionalMultiobjective:
         assert mean1 < mean2  # p2 has higher mean
         assert var1 < var3  # p3 has higher variance
         assert mean3 > mean1 and mean3 < mean2  # p3 is in between
+    
+    def test_distributional_multiobjective_weighted_mean(self):
+        """Distributional solutions should compute multi-fitness per objective."""
+        if not HAS_DIST_HEAD:
+            pytest.skip("Distributional head not available")
+        
+        # Two particles with different sums
+        p1 = Solution(int_values=[np.array([3, 1])])
+        p2 = Solution(int_values=[np.array([2, 0])])
+        weights = np.array([0.25, 0.75])
+        dist = ParticleDistribution([p1, p2], weights)
+        dsol = DistributionalSolution(dist)
+        
+        population = [dsol]
+        control = {"dist_objective": "mean", "dist_eval_mode": "weighted"}
+        
+        evaluate_fitness(
+            population=population,
+            stat_func=self.two_objective_fitness,
+            data={},
+            n_stat=2,
+            control=control
+        )
+        
+        expected = [2.5, -2.5]  # Weighted mean of (sum, -sum)
+        assert np.allclose(population[0].multi_fitness, expected)
+        assert population[0].fitness == pytest.approx(sum(expected))
+    
+    def test_distributional_non_dominated_sorting(self):
+        """Distributional multi-objective solutions should be non-dominated when appropriate."""
+        if not HAS_DIST_HEAD:
+            pytest.skip("Distributional head not available")
+        
+        # Solution A: higher first objective, lower second
+        a_particles = [
+            Solution(int_values=[np.array([4, 2])]),
+            Solution(int_values=[np.array([2, 2])])
+        ]
+        a_dist = ParticleDistribution(a_particles, np.array([0.5, 0.5]))
+        a_sol = DistributionalSolution(a_dist)
+        
+        # Solution B: lower first objective, higher second
+        b_particles = [
+            Solution(int_values=[np.array([1, 1])]),
+            Solution(int_values=[np.array([3, 0])])
+        ]
+        b_dist = ParticleDistribution(b_particles, np.array([0.5, 0.5]))
+        b_sol = DistributionalSolution(b_dist)
+        
+        population = [a_sol, b_sol]
+        control = {"dist_objective": "mean", "dist_eval_mode": "weighted"}
+        
+        evaluate_fitness(
+            population=population,
+            stat_func=self.two_objective_fitness,
+            data={},
+            n_stat=2,
+            control=control
+        )
+        
+        # Verify the objectives are in conflict so neither dominates the other
+        fronts = fast_non_dominated_sort(population)
+        assert len(fronts) > 0
+        assert len(fronts[0]) == 2  # both should appear on the first Pareto front
+
+    def test_control_supports_nsga_means_flag(self):
+        """train_sel_control should accept dist_use_nsga_means."""
+        control = train_sel_control(dist_use_nsga_means=True)
+        assert control["dist_use_nsga_means"] is True
+
+    def test_distributional_nsga_on_mean_objectives_scalar_setup(self):
+        """
+        When dist_use_nsga_means is enabled, distributional solutions should
+        expose their mean objectives for NSGA selection even if n_stat=1.
+        """
+        if not HAS_DIST_HEAD:
+            pytest.skip("Distributional head not available")
+
+        # Solution A: higher first objective, lower second
+        a_particles = [
+            Solution(int_values=[np.array([4, 2])]),
+            Solution(int_values=[np.array([2, 2])])
+        ]
+        a_dist = ParticleDistribution(a_particles, np.array([0.5, 0.5]))
+        a_sol = DistributionalSolution(a_dist)
+
+        # Solution B: lower first objective, higher second
+        b_particles = [
+            Solution(int_values=[np.array([1, 1])]),
+            Solution(int_values=[np.array([3, 0])])
+        ]
+        b_dist = ParticleDistribution(b_particles, np.array([0.5, 0.5]))
+        b_sol = DistributionalSolution(b_dist)
+
+        population = [a_sol, b_sol]
+        control = {
+            "dist_objective": "mean",
+            "dist_eval_mode": "weighted",
+            "dist_use_nsga_means": True,
+        }
+
+        evaluate_fitness(
+            population=population,
+            stat_func=self.two_objective_fitness,
+            data={},
+            n_stat=1,  # simulate scalarized setup
+            control=control
+        )
+
+        assert population[0].multi_fitness == pytest.approx([5.0, -5.0])
+        assert population[1].multi_fitness == pytest.approx([2.5, -2.5])
+
+        # Selection should treat this as multi-objective even though n_stat=1
+        selected = _select_next_generation(
+            combined_pop=population,
+            pop_size=2,
+            n_stat=1,
+            use_nsga3=False,
+            reference_points=None,
+            candidates=None,
+            setsizes=None,
+            settypes=None,
+            stat_func=None,
+            data={},
+            is_parallel=False,
+            control=control,
+            fitness_cache={},
+            surrogate_model=None,
+        )
+
+        fronts = fast_non_dominated_sort(selected)
+        assert len(selected) == 2
+        assert len(fronts) > 0 and len(fronts[0]) == 2
     
     def test_distributional_crossover_preserves_structure(self):
         """Test that crossover works with distributions that have multi_fitness."""
