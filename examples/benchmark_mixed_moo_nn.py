@@ -23,14 +23,15 @@ def trap_function_5(bits):
 def evaluate_mixed_fitness_moo(int_vals, dbl_vals, data):
     """
     Mixed Problem MOO:
-    Obj 1 (Discrete): Maximizing Trap Score (Binary) - Permutation Cost (Perm).
-    Obj 2 (Continuous): Maximizing -Rastrigin Value.
+    Obj 1: Favors Trap=1s, Perm=Sorted, Cont=0.
+    Obj 2: Favors Trap=0s, Perm=Unsorted, Cont=2.
     
-    Overall Goal: MAXIMIZE Both Objectives (Pareto Front).
+    This creates a true Pareto surface trading off all three variable types.
     """
     
     # --- 1. Binary (Trap) ---
     binary_vec = int_vals[0]
+    # Trap score (favors blocks of 1s, specifically 11111)
     trap_score = 0
     block_size = 5
     for i in range(0, len(binary_vec), block_size):
@@ -38,26 +39,34 @@ def evaluate_mixed_fitness_moo(int_vals, dbl_vals, data):
         if len(chunk) == block_size:
             trap_score += trap_function_5(chunk)
             
+    # Count Zeros (Conflict for Obj 2)
+    zeros_score = len(binary_vec) - sum(binary_vec)
+            
     # --- 2. Permutation ---
     perm_vec = int_vals[1]
-    perm_cost = sum(abs(v - i) for i, v in enumerate(perm_vec))
+    # Distance from Identity (0, 1, 2...)
+    perm_dist = sum(abs(v - i) for i, v in enumerate(perm_vec))
     
-    # --- 3. Continuous (Rastrigin) ---
+    # --- 3. Continuous (Rastrigin vs Shifted Sphere) ---
     vals = dbl_vals[0]
     if hasattr(vals, '__len__'):
         x = np.array(vals)
     else:
         x = np.array([vals])
     n = len(x)
+    
+    # Rastrigin (Global min at 0). Obj1 wants to Minimize this (Maximize Negative)
     rast_val = 10 * n + np.sum(x**2 - 10 * np.cos(2 * np.pi * x))
     
-    # Objectives
-    # Obj 1: Discrete Quality (Max = 30 - 0 = 30)
-    obj1 = 10.0 * trap_score - 1.0 * perm_cost
+    # Distance to 2.0. Obj2 wants to Minimize this (Maximize Negative)
+    dist_to_2 = np.sum((x - 2.0)**2)
     
-    # Obj 2: Continuous Quality (Max = 0, Min = neg large)
-    # Since Rastrigin >= 0, -Rastrigin <= 0.
-    obj2 = -1.0 * rast_val
+    # Objectives
+    # Obj 1: "System Quality" -> High 1s, Sorted, x close to 0
+    obj1 = (10.0 * trap_score) - (1.0 * perm_dist) - (1.0 * rast_val)
+    
+    # Obj 2: "Alternative Config" -> High 0s, Unsorted, x close to 2
+    obj2 = (2.0 * zeros_score) + (1.0 * perm_dist) - (10.0 * dist_to_2)
     
     return [obj1, obj2]
 
@@ -110,7 +119,7 @@ def run_benchmark():
     if pf_base:
         # Sort by obj1 for display
         sorted_pf = sorted(pf_base, key=lambda x: x[0])
-        print("Sample Pareto Points (Obj1: Discrete, Obj2: Cont):")
+        print("Sample Pareto Points (Obj1, Obj2):")
         for i in range(0, len(sorted_pf), max(1, len(sorted_pf)//5)):
             print(f"  {sorted_pf[i]}")
     
@@ -138,7 +147,7 @@ def run_benchmark():
     print(f"NN-Enhanced Pareto Front Size: {len(pf_nn)}")
     if pf_nn:
         sorted_pf = sorted(pf_nn, key=lambda x: x[0])
-        print("Sample Pareto Points (Obj1: Discrete, Obj2: Cont):")
+        print("Sample Pareto Points (Obj1, Obj2):")
         for i in range(0, len(sorted_pf), max(1, len(sorted_pf)//5)):
             print(f"  {sorted_pf[i]}")
 
@@ -161,8 +170,8 @@ def run_benchmark():
     b1_base, b2_base = simple_hv(pf_base, None)
     b1_nn, b2_nn = simple_hv(pf_nn, None)
     
-    print(f"Baseline Best Obj1 (Disc): {b1_base:.2f}, Best Obj2 (Cont): {b2_base:.2f}")
-    print(f"NN-Enh   Best Obj1 (Disc): {b1_nn:.2f}, Best Obj2 (Cont): {b2_nn:.2f}")
+    print(f"Baseline Best Obj1: {b1_base:.2f}, Best Obj2: {b2_base:.2f}")
+    print(f"NN-Enh   Best Obj1: {b1_nn:.2f}, Best Obj2: {b2_nn:.2f}")
 
 if __name__ == "__main__":
     run_benchmark()

@@ -23,7 +23,7 @@ def _check_inputs(soln: List[int], n_samples: int) -> None:
     ValueError
         If solution is empty or contains invalid indices
     """
-    if not soln:
+    if len(soln) == 0:
         raise ValueError("Solution set is empty")
     
     # Convert to array for efficient checking
@@ -372,6 +372,10 @@ def cdmean_opt(soln: List[int], data: Dict[str, Any]) -> float:
     float
         CDMean value
     """
+    # Check if Linear Contrast optimization is requested via 'L' in data
+    if "L" in data:
+        return cdmean_opt_linear(soln, data)
+        
     G_matrix = _ensure_numpy(data["G"])
     # Support both legacy 'lambda' and newer 'lambda_val' keys.
     lambda_val = data.get("lambda", data.get("lambda_val", 1.0))
@@ -495,6 +499,104 @@ def cdmean_opt_target(soln: List[int], data: Dict[str, Any]) -> float:
 
         # Return mean for target samples
         return np.mean(diag_vals[targ])
+
+    except (np.linalg.LinAlgError, ValueError):
+        return float('-inf')
+
+
+def cdmean_opt_linear(soln: List[int], data: Dict[str, Any]) -> float:
+    """
+    CDMean criterion for Linear Contrasts (Lu) - highly optimized.
+    
+    Computes the mean reliability of linear combinations u_trans = L @ u.
+    Reliability = Var(L @ u_hat) / Var(L @ u).
+    
+    G_L = L @ G
+    Using precomputed matrices G_L and diag(L @ G @ L.T) for speed.
+
+    Parameters
+    ----------
+    soln : List[int]
+        Indices of the selected samples
+    data : Dict[str, Any]
+        Data structure containing G, lambda, L, and optionally 
+        precomputed G_L and L_G_L_diag.
+
+    Returns
+    -------
+    float
+        Mean CD value for the linear contrasts
+    """
+    lambda_val = data.get("lambda", data.get("lambda_val", 1.0))
+    G_matrix = _ensure_numpy(data["G"])
+    n_samples = G_matrix.shape[0]
+    k = len(soln)
+    _check_inputs(soln, n_samples)
+    
+    # Check for precomputed matrices
+    if "G_L" in data and "L_G_L_diag" in data:
+        G_L = data["G_L"]
+        L_G_L_diag = data["L_G_L_diag"]
+    else:
+        # Fallback if not precomputed (e.g. L added manually without make_data)
+        if "L" not in data:
+            raise ValueError("L matrix is required for linear contrast optimization")
+        L = _ensure_numpy(data["L"])
+        G_L = L @ G_matrix
+        L_G_L_diag = np.sum(G_L * L, axis=1)
+
+    # Note: G_L is (m x N), G_L[:, soln] is (m x k)
+    G_L_soln = G_L[:, soln]
+
+    # V = G[soln,soln] + λI (Standard construction from G)
+    G_soln_soln = G_matrix[np.ix_(soln, soln)]
+    V = G_soln_soln.copy()
+    V.flat[::k+1] += lambda_val
+
+    try:
+        _validate_matrix(V, "V matrix")
+
+        # Use Cholesky decomposition for solving
+        L_chol = np.linalg.cholesky(V)
+        ones = np.ones(k)
+
+        # Solve V @ V_inv_1 = ones
+        V_inv_1 = sp_linalg.cho_solve((L_chol, True), ones)
+
+        # Compute scalar: 1' @ V_inv @ 1
+        sum_V_inv = ones @ V_inv_1
+
+        # Compute V_inv @ G_L_soln.T using Cholesky solve
+        # G_L_soln is m x k, so transpose is k x m
+        V_inv_G_L = sp_linalg.cho_solve((L_chol, True), G_L_soln.T).T  # m × k
+
+        # Outer product contribution
+        # outer_contrib = (G_L_soln @ V_inv_1) @ V_inv_1.T / sum_V_inv
+        # We need diag(G_L_soln @ outer_contrib.T) eventually
+        # Let's clean up the math:
+        # Term 2 = G_L_soln @ V_inv_2 @ G_L_soln.T
+        # V_inv_2 = (V_inv_1 @ V_inv_1.T) / sum_V_inv
+        # Term 2 = (G_L_soln @ V_inv_1) @ (G_L_soln @ V_inv_1).T / sum_V_inv
+        # We define vector w = G_L_soln @ V_inv_1 (m x 1)
+        # Term 2 is outer(w, w) / sum_V_inv
+        w = G_L_soln @ V_inv_1
+        
+        # We need diagonal of Term 1 - Term 2
+        # Term 1: diag(G_L_soln @ V_inv @ G_L_soln.T)
+        #       = sum(G_L_soln * V_inv_G_L, axis=1)
+        term1_diag = np.sum(G_L_soln * V_inv_G_L, axis=1)
+        
+        # Term 2: diag(outer(w, w) / sum_V_inv)
+        #       = w^2 / sum_V_inv
+        term2_diag = (w ** 2) / sum_V_inv
+        
+        diag_vals = term1_diag - term2_diag
+
+        # Normalize by total variance of contrasts
+        diag_vals = diag_vals / L_G_L_diag
+        
+        # Return mean CD for all contrasts
+        return np.mean(diag_vals)
 
     except (np.linalg.LinAlgError, ValueError):
         return float('-inf')

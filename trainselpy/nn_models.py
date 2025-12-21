@@ -164,6 +164,10 @@ class DecisionStructure:
             if batch_size == 0: batch_size = cont_part.shape[0]
             parts.append(cont_part.float())
             
+        # Safety check: ensure we have at least one part
+        if not parts:
+            raise ValueError("encode_from_parts called with all None arguments")
+            
         return torch.cat(parts, dim=1).to(device)
 
 class VAE(nn.Module):

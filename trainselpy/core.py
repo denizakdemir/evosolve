@@ -29,6 +29,9 @@ class TrainSelData(TypedDict, total=False):
     Nind: int
     class_name: str
     X: Optional[np.ndarray]
+    L: Optional[Union[np.ndarray, pd.DataFrame]]
+    G_L: Optional[np.ndarray]
+    L_G_L_diag: Optional[np.ndarray]
 
 
 class ControlParams(TypedDict, total=False):
@@ -79,6 +82,16 @@ class ControlParams(TypedDict, total=False):
     gan_lr: float
     gan_lambda_gp: float
     gan_n_critic: int
+    # Distributional Optimization Parameters
+    dist_objective: str
+    dist_n_samples: int
+    dist_K_particles: int
+    dist_compression: str
+    dist_lambda_var: float
+    dist_alpha: float
+    dist_tau: float
+    dist_weight_mutation_prob: float
+    dist_support_mutation_prob: float
 
 
 def make_data(
@@ -88,7 +101,8 @@ def make_data(
     Vk: Optional[np.ndarray] = None,
     Ve: Optional[np.ndarray] = None,
     lambda_val: Optional[float] = None,
-    X: Optional[np.ndarray] = None
+    X: Optional[np.ndarray] = None,
+    L: Optional[Union[np.ndarray, pd.DataFrame]] = None
 ) -> TrainSelData:
     """
     Create a data structure for TrainSel optimization.
@@ -109,6 +123,10 @@ def make_data(
         Ratio of Ve to Vk.
     X : ndarray, optional
         Design matrix.
+    L : ndarray or DataFrame, optional
+        Linear contrast matrix. If provided, CDMEAN optimization
+        will target the reliability of Lu (linear combinations)
+        instead of u.
         
     Returns
     -------
@@ -196,6 +214,27 @@ def make_data(
     
     if X is not None:
         result['X'] = X
+        
+    if L is not None:
+        # Precompute matrices for linear contrast optimization
+        from trainselpy.optimization_criteria import _ensure_numpy
+        L_arr = _ensure_numpy(L)
+        G_arr = _ensure_numpy(big_K)
+        
+        # Check dimensions
+        if L_arr.shape[1] != G_arr.shape[0]:
+            raise ValueError(f"L matrix columns ({L_arr.shape[1]}) must match G matrix rows ({G_arr.shape[0]})")
+            
+        # Compute G_L = L @ G (Used in numerator)
+        G_L = L_arr @ G_arr
+        
+        # Compute diag(L @ G @ L.T) (Used in denominator)
+        # Efficient computation: sum((L @ G) * L, axis=1)
+        L_G_L_diag = np.sum(G_L * L_arr, axis=1)
+        
+        result['L'] = L
+        result['G_L'] = G_L
+        result['L_G_L_diag'] = L_G_L_diag
     
     return result
 
@@ -246,7 +285,17 @@ def train_sel_control(
     vae_lr: float = 1e-3,
     gan_lr: float = 1e-4,
     gan_lambda_gp: float = 10.0,
-    gan_n_critic: int = 5
+    gan_n_critic: int = 5,
+    # Distributional Optimization Parameters
+    dist_objective: str = "mean",
+    dist_n_samples: int = 20,
+    dist_K_particles: int = 10,
+    dist_compression: str = "top_k",
+    dist_lambda_var: float = 1.0,
+    dist_alpha: float = 0.1,
+    dist_tau: float = 0.1,
+    dist_weight_mutation_prob: float = 0.5,
+    dist_support_mutation_prob: float = 0.5
 ) -> ControlParams:
     """
     Create a control object for the TrainSel function.
@@ -333,6 +382,24 @@ def train_sel_control(
         When True, the objective function is assumed to support batched
         (vectorized) inputs and will be called once per generation with all
         solutions instead of once per solution.
+    dist_objective : str
+        Distributional objective type: 'mean', 'mean_variance', 'cvar', 'entropy'.
+    dist_n_samples : int
+        Number of Monte Carlo samples for distributional objectives.
+    dist_K_particles : int
+        Number of particles per distribution.
+    dist_compression : str
+        Compression strategy: 'top_k', 'resampling', 'kmeans'.
+    dist_lambda_var : float
+        Variance weight for mean-variance objective.
+    dist_alpha : float
+        Quantile level for CVaR objective.
+    dist_tau : float
+        Entropy regularization weight.
+    dist_weight_mutation_prob : float
+        Probability of mutating distribution weights.
+    dist_support_mutation_prob : float
+        Probability of mutating distribution support (particles).
         
     Returns
     -------
@@ -384,7 +451,16 @@ def train_sel_control(
         "vae_lr": vae_lr,
         "gan_lr": gan_lr,
         "gan_lambda_gp": gan_lambda_gp,
-        "gan_n_critic": gan_n_critic
+        "gan_n_critic": gan_n_critic,
+        "dist_objective": dist_objective,
+        "dist_n_samples": dist_n_samples,
+        "dist_K_particles": dist_K_particles,
+        "dist_compression": dist_compression,
+        "dist_lambda_var": dist_lambda_var,
+        "dist_alpha": dist_alpha,
+        "dist_tau": dist_tau,
+        "dist_weight_mutation_prob": dist_weight_mutation_prob,
+        "dist_support_mutation_prob": dist_support_mutation_prob
     }
     
     return control
@@ -407,26 +483,32 @@ def set_control_default(size: str = "free", **kwargs) -> ControlParams:
         Control object with default parameters.
     """
     # Use the provided size parameter
+    defaults = {
+        "niterations": 2000,
+        "minitbefstop": 500,
+        "nEliteSaved": 10,
+        "nelite": 200,
+        "npop": 1000,
+        "mutprob": 0.01,
+        "mutintensity": 0.1,
+        "crossprob": 0.5,
+        "crossintensity": 0.75,
+        "niterSANN": 200,
+        "tempini": 100.0,
+        "tempfin": 0.1,
+        "dynamicNelite": True,
+        "progress": True,
+        "parallelizable": False,
+        "mc_cores": 1,
+        "nislands": 1,
+    }
+    
+    # Update defaults with provided kwargs, allowing user to override defaults
+    defaults.update(kwargs)
+
     return train_sel_control(
         size=size,
-        niterations=2000,
-        minitbefstop=500,
-        nEliteSaved=10,
-        nelite=200,
-        npop=1000,
-        mutprob=0.01,
-        mutintensity=0.1,
-        crossprob=0.5,
-        crossintensity=0.75,
-        niterSANN=200,
-        tempini=100.0,
-        tempfin=0.1,
-        dynamicNelite=True,
-        progress=True,
-        parallelizable=False,
-        mc_cores=1,
-        nislands=1,
-        **kwargs
+        **defaults
     )
 
 
@@ -442,6 +524,10 @@ class TrainSelResult:
     execution_time: float              # Execution time in seconds.
     pareto_front: Optional[List[List[float]]] = None  # Pareto front for multi-objective optimization.
     pareto_solutions: Optional[List[Dict[str, Any]]] = None  # Pareto solutions for multi-objective optimization.
+    # Distributional optimization fields
+    distribution: Optional[Any] = None  # Best ParticleDistribution for distributional optimization
+    particle_solutions: Optional[List[Any]] = None  # Particle solutions
+    particle_weights: Optional[np.ndarray] = None  # Particle weights
 
 
 def train_sel(
@@ -540,7 +626,9 @@ def train_sel(
         raise ValueError("Settypes and candidates must have the same length")
     
     # Count the number of double variables.
-    n_dbl = sum(1 for st in settypes if st == "DBL")
+    # GRAPH_W, SPD, SIMPLEX are treated as continuous (double) variables
+    dbl_types = ["DBL", "GRAPH_W", "SPD", "SIMPLEX"]
+    n_dbl = sum(1 for st in settypes if st in dbl_types)
     
     # Parallel processing setup.
     if parallelizable and n_stat > 1 and nislands == 1:

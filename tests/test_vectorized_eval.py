@@ -66,4 +66,5 @@ def test_vectorized_single_objective_matches_scalar():
 
     # Best fitness and solution should match
     assert np.isclose(res_scalar["fitness"], res_vec["fitness"])
-    assert res_scalar["selected_indices"] == res_vec["selected_indices"]
+    # Use np.array_equal for proper array comparison
+    assert all(np.array_equal(a, b) for a, b in zip(res_scalar["selected_indices"], res_vec["selected_indices"]))

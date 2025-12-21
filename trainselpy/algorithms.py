@@ -33,7 +33,8 @@ def initialize_population(
     candidates: List[List[int]],
     setsizes: List[int],
     settypes: List[str],
-    pop_size: int
+    pop_size: int,
+    control: Dict[str, Any] = None
 ) -> List[Solution]:
     """
     Initialize a random population for the genetic algorithm.
@@ -48,26 +49,94 @@ def initialize_population(
         List of set types
     pop_size : int
         Population size
+    control : Dict[str, Any], optional
+        Control parameters (required for distributional optimization)
         
     Returns
     -------
     List[Solution]
         List of random solutions
     """
+    # Check if this is distributional optimization
+    if any("DIST:" in st for st in settypes):
+        # Use distributional initialization
+        from trainselpy.distributional_operators import initialize_distributional_population
+        # Create minimal control dict if None
+        if control is None:
+            control = {"dist_K_particles": 10}
+        return initialize_distributional_population(
+            candidates, setsizes, settypes, pop_size, control
+        )
+    
     population = []
     
     for _ in range(pop_size):
         # Initialize a new solution
         sol = Solution()
+        # print(f"DEBUG INIT: settypes={settypes}")
         
         # For each set type
         for i, (cand, size, type_) in enumerate(zip(candidates, setsizes, settypes)):
-            if type_ == "DBL":
-                # For double variables, generate random values between 0 and 1
-                sol.dbl_values.append(np.random.uniform(0, 1, size))
-            elif type_ == "BOOL":
-                # For boolean variables, generate random 0/1 values
-                sol.int_values.append(np.random.choice([0, 1], size=len(cand)).tolist())
+             # print(f"DEBUG: Processing {type_}")
+            if type_ in ["DBL", "GRAPH_W", "SPD", "SIMPLEX"]:
+                # Continuous variables
+                if type_ == "SPD":
+                    # Generate random SPD matrix (size must be square)
+                    n = int(np.sqrt(size))
+                    if n * n != size:
+                        # Fallback if not perfect square, just random uniform
+                        sol.dbl_values.append(np.random.uniform(0, 1, size).astype(float))
+                    else:
+                        # Generate random matrix A, then A*A.T
+                        A = np.random.randn(n, n)
+                        spd = np.dot(A, A.T)
+                        # Flatten for storage
+                        sol.dbl_values.append(spd.flatten())
+                elif type_ == "SIMPLEX":
+                    # Generate random point on simplex (Dirichlet distribution with alpha=1)
+                    # For size N, generates N values summing to 1
+                    s = np.random.gamma(1.0, 1.0, size)
+                    s = s / np.sum(s)
+                    sol.dbl_values.append(s)
+                else: 
+                    # DBL, GRAPH_W
+                    # For weighted graph, we might want sparse initialization later, 
+                    # but uniform [0,1] is a safe universal start.
+                    sol.dbl_values.append(np.random.uniform(0, 1, size).astype(float))
+
+            elif type_ in ["BOOL", "GRAPH_U"]:
+                # For boolean variables and unweighted graphs, generate random 0/1 values
+                sol.int_values.append(np.random.choice([0, 1], size=size).astype(int))
+
+            elif type_ == "PARTITION":
+                # print("DEBUG: In PARTITION block")
+                # For partition, we assign 'size' items into groups.
+                # However, 'size' usually means number of selected items in other contexts.
+                # Here, we assume 'size' is the number of elements to partition.
+                # The 'cand' list might define the available group IDs, or we assume random grouping.
+                # Let's assume 'size' is the length of the partition vector.
+                # And 'cand' defines the available group labels (e.g. 0 to K-1).
+                
+                n_groups = len(cand) if cand else int(np.sqrt(size)) # Fallback
+                if n_groups < 1: n_groups = 2
+                
+                # Assign each of the 'size' elements to a random group 0..n_groups-1
+                sol.int_values.append(np.random.randint(0, n_groups, size=size))
+                
+            elif type_ == "INT":
+                # Integer-valued variables with specified bounds
+                # candidates[i] should be [min_val, max_val] for bounded integers
+                # If candidates is empty or has only one element, default to [0, 100]
+                if len(cand) >= 2:
+                    min_val, max_val = cand[0], cand[1]
+                elif len(cand) == 1:
+                    min_val, max_val = 0, cand[0]
+                else:
+                    min_val, max_val = 0, 100  # Default range
+                
+                # Generate random integers in [min_val, max_val]
+                sol.int_values.append(np.random.randint(min_val, max_val + 1, size=size))
+
             else:
                 # For set types (UOS, OS, UOMS, OMS)
                 if size > len(cand):
@@ -75,7 +144,7 @@ def initialize_population(
                 
                 if type_ in ["UOS", "OS"]:
                     # Unordered or ordered set (no repetition)
-                    selected = np.random.choice(cand, size=size, replace=False).tolist()
+                    selected = np.random.choice(cand, size=size, replace=False)
                     
                     if type_ == "OS":
                         # For ordered set, keep the random order
@@ -87,7 +156,7 @@ def initialize_population(
                     sol.int_values.append(selected)
                 elif type_ in ["UOMS", "OMS"]:
                     # Unordered or ordered multiset (with repetition)
-                    selected = np.random.choice(cand, size=size, replace=True).tolist()
+                    selected = np.random.choice(cand, size=size, replace=True)
                     
                     if type_ == "OMS":
                         # For ordered multiset, keep the random order
@@ -213,6 +282,46 @@ def evaluate_fitness(
             fitness_cache[cache_key] = sol.fitness
         return
 
+    # Check if this is distributional optimization
+    from trainselpy.distributional_head import (
+        DistributionalSolution, mean_objective, mean_variance_objective, 
+        cvar_objective, entropy_regularized_objective
+    )
+    
+    if population and isinstance(population[0], DistributionalSolution):
+        # Distributional evaluation
+        obj_type = control.get("dist_objective", "mean") if control else "mean"
+        n_samples = control.get("dist_n_samples", 20) if control else 20
+        
+        for sol in population:
+            if obj_type == "mean":
+                fit = mean_objective(sol.distribution, stat_func, n_samples, data)
+            elif obj_type == "mean_variance":
+                lambda_var = control.get("dist_lambda_var", 1.0)
+                fit = mean_variance_objective(
+                    sol.distribution, stat_func, n_samples, lambda_var, data
+                )
+            elif obj_type == "cvar":
+                alpha = control.get("dist_alpha", 0.1)
+                fit = cvar_objective(
+                    sol.distribution, stat_func, n_samples, alpha, True, data
+                )
+            elif obj_type == "entropy":
+                tau = control.get("dist_tau", 0.1)
+                fit = entropy_regularized_objective(
+                    sol.distribution, stat_func, n_samples, tau, data
+                )
+            else:
+                # Default to mean
+                fit = mean_objective(sol.distribution, stat_func, n_samples, data)
+            
+            sol.fitness = float(fit)
+            if n_stat > 1:
+                # For multi-objective, replicate single fitness
+                # TODO: Support separate objectives for each particle
+                sol.multi_fitness = [fit] * n_stat
+        return
+
     # Check if we have integer and/or double variables
     has_int = any(sol.int_values for sol in population)
     has_dbl = any(sol.dbl_values for sol in population)
@@ -320,7 +429,12 @@ def simulated_annealing(
     # This avoids floating-point errors from repeated divisions
     import math
     if n_iter > 0:
-        decay_rate = math.log(temp_init / temp_final) / n_iter
+        # Prevent log domain error if temp_final is <= 0
+        safe_temp_final = temp_final if temp_final > 1e-10 else 1e-10
+        if safe_temp_final >= temp_init:
+             decay_rate = 0
+        else:
+             decay_rate = math.log(temp_init / safe_temp_final) / n_iter
     else:
         decay_rate = 0
     temp = temp_init
@@ -358,7 +472,23 @@ def simulated_annealing(
             if isinstance(neighbor.fitness, (int, float)) and isinstance(current.fitness, (int, float)):
                 if np.isfinite(neighbor.fitness) and np.isfinite(current.fitness):
                     delta = neighbor.fitness - current.fitness
-                    if delta > 0 or random.random() < np.exp(delta / temp):
+                    
+                    accept = False
+                    if delta > 0:
+                        accept = True
+                    else:
+                        if temp < 1e-10:
+                            accept = False
+                        else:
+                            # Avoid overflow/underflow
+                            val = delta / temp
+                            if val < -700:
+                                accept = False
+                            else:
+                                if random.random() < math.exp(val):
+                                    accept = True
+                                    
+                    if accept:
                         current = neighbor.copy()
                 elif np.isfinite(neighbor.fitness):
                     # Current fitness is not finite but neighbor's is
@@ -391,7 +521,23 @@ def simulated_annealing(
             if isinstance(neighbor.fitness, (int, float)) and isinstance(current.fitness, (int, float)):
                 if np.isfinite(neighbor.fitness) and np.isfinite(current.fitness):
                     delta = neighbor.fitness - current.fitness
-                    if delta > 0 or random.random() < np.exp(delta / temp):
+                    
+                    accept = False
+                    if delta > 0:
+                        accept = True
+                    else:
+                        if temp < 1e-10:
+                            accept = False
+                        else:
+                            # Avoid overflow/underflow
+                            val = delta / temp
+                            if val < -700:
+                                accept = False
+                            else:
+                                if random.random() < math.exp(val):
+                                    accept = True
+                                    
+                    if accept:
                         current = neighbor.copy()
                 elif np.isfinite(neighbor.fitness):
                     # Current fitness is not finite but neighbor's is
@@ -402,8 +548,10 @@ def simulated_annealing(
                     best = current.copy()
 
         # Cool down the temperature using exponential decay
-        # temp = temp_init * exp(-(t+1) * decay_rate)
-        temp = temp_init * math.exp(-(t + 1) * decay_rate)
+        if temp > 1e-10:
+            temp = temp_init * math.exp(-(t + 1) * decay_rate)
+        else:
+            temp = 0.0
 
     return best
 
@@ -445,36 +593,27 @@ def generate_from_surrogate(
     
     # Define a wrapper for the fitness function to use the surrogate
     def surrogate_fitness_wrapper(int_vals, dbl_vals, data=None):
-        # Reconstruct a temporary solution object
-        # Note: int_vals and dbl_vals are passed as they are stored in the solution
-        # (List[List[int]] and List[List[float]])
-        # BUT simulated_annealing passes:
-        # int_arg = neighbor.int_values if len > 1 else neighbor.int_values[0]
-        # This inconsistency in SA needs to be handled or we need to fix SA.
-        # The current SA implementation (and my refactor) still does:
-        # int_arg = neighbor.int_values if len(neighbor.int_values) > 1 else neighbor.int_values[0]
+        # Prepare arguments for predict_from_values
         
-        # So we need to handle both cases here.
-        
-        temp_sol = Solution()
-        
-        # Handle int_vals
-        if int_vals:
-            if isinstance(int_vals[0], list):
-                temp_sol.int_values = int_vals
+        # Handle int_vals normalization (single list vs list of lists)
+        final_int_vals = []
+        if int_vals is not None and len(int_vals) > 0:
+            if isinstance(int_vals[0], list) or isinstance(int_vals[0], np.ndarray):
+                final_int_vals = int_vals
             else:
-                temp_sol.int_values = [int_vals]
-        
-        # Handle dbl_vals
-        if dbl_vals:
-            if isinstance(dbl_vals[0], list):
-                temp_sol.dbl_values = dbl_vals
-            else:
-                temp_sol.dbl_values = [dbl_vals]
+                final_int_vals = [int_vals]
                 
-        # Predict using surrogate
-        means, _ = surrogate_model.predict([temp_sol])
-        return means[0]
+        # Handle dbl_vals normalization
+        final_dbl_vals = []
+        if dbl_vals:
+            if isinstance(dbl_vals[0], list) or isinstance(dbl_vals[0], np.ndarray):
+                final_dbl_vals = dbl_vals
+            else:
+                final_dbl_vals = [dbl_vals]
+                
+        # Fast prediction using raw values
+        mean, _ = surrogate_model.predict_from_values(final_int_vals, final_dbl_vals)
+        return mean
 
     for _ in range(n_solutions):
         # Start with a random solution
@@ -957,6 +1096,10 @@ def _extract_decision_parts(solutions, settypes, setsizes, candidates):
         # Permutation temp lists
         current_perm_idx = 0
         
+        # Track continuous parts from both DBL and INT (normalized)
+        cont_vec = []
+        current_dbl_idx = 0
+        
         for i, stype in enumerate(settypes):
             if stype == "BOOL":
                 # Get the bits
@@ -981,17 +1124,35 @@ def _extract_decision_parts(solutions, settypes, setsizes, candidates):
                     perm_parts_list[current_perm_idx].append(vals)
                     current_perm_idx += 1
                 current_int_idx += 1
-            elif stype == "DBL":
-                # handled in dbl_values
-                pass
+            elif stype in ["DBL", "GRAPH_W", "SPD", "SIMPLEX"]:
+                # Continuous from dbl_values (includes DBL and advanced heads)
+                if current_dbl_idx < len(sol.dbl_values):
+                    flat_dbl = flatten_dbl_values([sol.dbl_values[current_dbl_idx]])
+                    cont_vec.extend(flat_dbl)
+                    current_dbl_idx += 1
+            elif stype == "INT":
+                # INT: Normalize to [0, 1] for neural network
+                if current_int_idx < len(sol.int_values):
+                    int_vals = sol.int_values[current_int_idx].astype(float)
+                    
+                    # Get bounds
+                    if i < len(candidates) and len(candidates[i]) >= 2:
+                        min_val, max_val = candidates[i][0], candidates[i][1]
+                    elif i < len(candidates) and len(candidates[i]) == 1:
+                        min_val, max_val = 0, candidates[i][0]
+                    else:
+                        min_val, max_val = 0, 100
+                    
+                    # Normalize to [0, 1]
+                    normalized = (int_vals - min_val) / (max_val - min_val + 1e-9)
+                    cont_vec.extend(normalized)
+                current_int_idx += 1
                 
         if bin_vec:
             binary_parts.append(bin_vec)
-            
-        if sol.dbl_values:
-            # Flatten all dbl values
-            flat_dbl = flatten_dbl_values(sol.dbl_values)
-            cont_parts.append(flat_dbl)
+        
+        if cont_vec:
+            cont_parts.append(cont_vec)
             
     # Convert to tensors
     bin_tensor = torch.tensor(binary_parts, dtype=torch.float32) if binary_parts else None
@@ -1031,14 +1192,34 @@ def _initialize_neural_models(control, candidates, setsizes, settypes):
     cont_dim = 0
     
     for i, stype in enumerate(settypes):
-        if stype == "BOOL":
-            bin_dim += len(candidates[i]) # BOOL size is determined by candidate length, not setsize
-        elif stype in ["OS", "UOS", "OMS", "UOMS"]:
+        if stype in ["BOOL", "GRAPH_U"]:
+             # BOOL size is determined by candidate length, not setsize
+             # But for GRAPH_U setsizes[i] is N*N ?? 
+             # initialization_population uses setsizes[i] for GRAPH_U.
+             # BOOL uses len(candidates[i]) in init... wait.
+             # Check algorithms.py line 70: sol.int_values.append(np.random.choice([0, 1], size=len(cand)))
+             # But line 66: setsizes for DBL.
+             
+             # Initialization logic in algorithms.py updated earlier:
+             # elif type_ in ["BOOL", "GRAPH_U"]:
+             #    sol.int_values.append(np.random.choice([0, 1], size=size).astype(int))
+             # So for GRAPH_U we use 'size' (setsizes[i]).
+             # For BOOL original logic was len(cand).
+             
+             if stype == "GRAPH_U":
+                 bin_dim += setsizes[i]
+             else:
+                 bin_dim += len(candidates[i])
+                 
+        elif stype in ["OS", "UOS", "OMS", "UOMS", "PARTITION"]:
             # n items to choose from, k items to choose
+            # For PARTITION: candidates=groups (n), setsizes=items (k)
             n = len(candidates[i])
             k = setsizes[i]
             perm_dims.append((n, k))
-        elif stype == "DBL":
+            
+        elif stype in ["DBL", "GRAPH_W", "SPD", "SIMPLEX", "INT"]:
+            # INT is treated as continuous (normalized to [0, 1])
             cont_dim += setsizes[i]
             
     structure = DecisionStructure(bin_dim, perm_dims, cont_dim)
@@ -1371,11 +1552,56 @@ def _generate_neural_offspring(models, control, settypes, candidates, setsizes, 
                         
                         sol.int_values.append(vals)
                         
-                    elif stype == "DBL":
+                    elif stype in ["DBL", "GRAPH_W", "SPD", "SIMPLEX"]:
                         size = setsizes[j]
-                        vals = current_sol_cont_row[s_cont_ptr : s_cont_ptr+size].tolist()
+                        vals = np.array(current_sol_cont_row[s_cont_ptr : s_cont_ptr+size])
                         s_cont_ptr += size
+                        
+                        # Apply constraint repairs for neural-generated solutions
+                        if stype == "GRAPH_W":
+                            np.clip(vals, 0.0, 1.0, out=vals)
+                        elif stype == "SIMPLEX":
+                            # Ensure non-negative and sum to 1
+                            np.maximum(vals, 1e-9, out=vals)
+                            total = np.sum(vals)
+                            if total > 0: vals /= total
+                            else: vals[:] = 1.0 / size
+                        elif stype == "SPD":
+                            # Project to SPD
+                            n_cols = len(vals)
+                            n = int(np.sqrt(n_cols))
+                            if n*n == n_cols:
+                                mat = vals.reshape(n, n)
+                                mat = 0.5 * (mat + mat.T)
+                                try:
+                                    np.linalg.cholesky(mat)
+                                except np.linalg.LinAlgError:
+                                    w, v = np.linalg.eigh(mat)
+                                    w[w < 1e-6] = 1e-6
+                                    mat = v @ np.diag(w) @ v.T
+                                vals[:] = mat.flatten()
+                                
                         sol.dbl_values.append(vals)
+                    
+                    elif stype == "INT":
+                        # INT: Denormalize from [0, 1] to [min, max] and convert to int
+                        size = setsizes[j]
+                        normalized_vals = np.array(current_sol_cont_row[s_cont_ptr : s_cont_ptr+size])
+                        s_cont_ptr += size
+                        
+                        # Get bounds
+                        if j < len(candidates) and len(candidates[j]) >= 2:
+                            min_val, max_val = candidates[j][0], candidates[j][1]
+                        elif j < len(candidates) and len(candidates[j]) == 1:
+                            min_val, max_val = 0, candidates[j][0]
+                        else:
+                            min_val, max_val = 0, 100
+                        
+                        # Denormalize and convert to int
+                        int_vals = np.round(normalized_vals * (max_val - min_val) + min_val).astype(int)
+                        int_vals = np.clip(int_vals, min_val, max_val)
+                        
+                        sol.int_values.append(int_vals)
                         
                 offspring.append(sol)
 
@@ -1462,11 +1688,55 @@ def _generate_neural_offspring(models, control, settypes, candidates, setsizes, 
                                     vals = new_vals
                                 if stype == "UOS": vals.sort()
                             sol.int_values.append(vals)
-                        elif stype == "DBL":
+                        elif stype in ["DBL", "GRAPH_W", "SPD", "SIMPLEX"]:
                             size = setsizes[j]
-                            vals = current_sol_cont_row[s_cont_ptr : s_cont_ptr+size].tolist()
+                            vals = np.array(current_sol_cont_row[s_cont_ptr : s_cont_ptr+size])
                             s_cont_ptr += size
+
+                            # Apply constraint repairs for neural-generated solutions
+                            if stype == "GRAPH_W":
+                                np.clip(vals, 0.0, 1.0, out=vals)
+                            elif stype == "SIMPLEX":
+                                np.maximum(vals, 1e-9, out=vals)
+                                total = np.sum(vals)
+                                if total > 0: vals /= total
+                                else: vals[:] = 1.0 / size
+                            elif stype == "SPD":
+                                n_cols = len(vals)
+                                n = int(np.sqrt(n_cols))
+                                if n*n == n_cols:
+                                    mat = vals.reshape(n, n)
+                                    mat = 0.5 * (mat + mat.T)
+                                    try:
+                                        np.linalg.cholesky(mat)
+                                    except np.linalg.LinAlgError:
+                                        w, v = np.linalg.eigh(mat)
+                                        w[w < 1e-6] = 1e-6
+                                        mat = v @ np.diag(w) @ v.T
+                                    vals[:] = mat.flatten()
+
                             sol.dbl_values.append(vals)
+                        
+                        elif stype == "INT":
+                            # INT: Denormalize from [0, 1] to [min, max] and convert to int
+                            size = setsizes[j]
+                            normalized_vals = np.array(current_sol_cont_row[s_cont_ptr : s_cont_ptr+size])
+                            s_cont_ptr += size
+                            
+                            # Get bounds
+                            if j < len(candidates) and len(candidates[j]) >= 2:
+                                min_val, max_val = candidates[j][0], candidates[j][1]
+                            elif j < len(candidates) and len(candidates[j]) == 1:
+                                min_val, max_val = 0, candidates[j][0]
+                            else:
+                                min_val, max_val = 0, 100
+                            
+                            # Denormalize and convert to int
+                            int_vals = np.round(normalized_vals * (max_val - min_val) + min_val).astype(int)
+                            int_vals = np.clip(int_vals, min_val, max_val)
+                            
+                            sol.int_values.append(int_vals)
+                            
                     offspring.append(sol)
                     
     return offspring
@@ -1550,7 +1820,7 @@ def genetic_algorithm(
     use_nsga3, reference_points = _initialize_nsga3(n_stat, pop_size, control)
 
     # Initialize population
-    population = initialize_population(candidates, setsizes, settypes, pop_size)
+    population = initialize_population(candidates, setsizes, settypes, pop_size, control)
 
     # Incorporate initial solution if provided
     if init_sol is not None:
@@ -1607,16 +1877,31 @@ def genetic_algorithm(
         parents = selection(population, n_elite, tournament_size=3)
         
         # Create offspring through crossover
-        if "crossover_func" in control:
-            offspring = control["crossover_func"](parents, cross_prob, cross_intensity, settypes, candidates)
-        else:
-            offspring = crossover(parents, cross_prob, cross_intensity, settypes, candidates)
+        # Check if distributional optimization
+        is_distributional = any("DIST:" in st for st in settypes)
         
-        # Apply mutation
-        if "mutation_func" in control:
-            control["mutation_func"](offspring, candidates, settypes, mut_prob, mut_intensity)
+        if is_distributional:
+            # Use distributional operators
+            from trainselpy.distributional_operators import distributional_crossover, distributional_mutation
+            
+            offspring = distributional_crossover(
+                parents, cross_prob, cross_intensity, settypes, candidates, control
+            )
+            
+            distributional_mutation(
+                offspring, candidates, settypes, mut_prob, mut_intensity, control
+            )
         else:
-            mutation(offspring, candidates, settypes, mut_prob, mut_intensity)
+            if "crossover_func" in control:
+                offspring = control["crossover_func"](parents, cross_prob, cross_intensity, settypes, candidates)
+            else:
+                offspring = crossover(parents, cross_prob, cross_intensity, settypes, candidates)
+            
+            # Apply mutation
+            if "mutation_func" in control:
+                control["mutation_func"](offspring, candidates, settypes, mut_prob, mut_intensity)
+            else:
+                    mutation(offspring, candidates, settypes, mut_prob, mut_intensity)
 
         # --- Neural Network Training & Generation ---
         if nn_models and gen >= nn_start_gen:
@@ -1889,7 +2174,6 @@ def genetic_algorithm(
                 "generation": gen,
                 "population": population,
                 "best_solution": best_solution,
-                "fitness_history": fitness_history,
                 "no_improvement_count": no_improvement_count,
                 "pareto_front": current_pareto_front,
                 "pareto_solutions": current_pareto_solutions,
@@ -1914,13 +2198,8 @@ def genetic_algorithm(
             "selected_indices": best_solution.int_values,
             "selected_values": best_solution.dbl_values,
             "fitness": best_solution.fitness,
-            "fitness_history": fitness_history
+
         }
-    else:
-        # Multi-objective result processing
-        # Use fast_non_dominated_sort to get the true Pareto front
-        fronts = fast_non_dominated_sort(population)
-        pareto_solutions = fronts[0] if fronts else []  # First front is the Pareto front
         
         # Apply solution diversity filtering if enabled
         if pareto_solutions:
@@ -1942,7 +2221,6 @@ def genetic_algorithm(
             "selected_indices": best_solution.int_values,
             "selected_values": best_solution.dbl_values,
             "fitness": best_solution.fitness,
-            "fitness_history": fitness_history,
             "pareto_front": pareto_front,
             "pareto_solutions": [
                 {

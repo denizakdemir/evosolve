@@ -13,6 +13,9 @@ While the package includes specialized criteria for genomic selection and experi
 - **Continuous Optimization**: Optimizing continuous parameters.
 - **Mixed-Integer Optimization**: Problems involving both discrete and continuous variables.
 - **Multi-Objective Optimization**: Simultaneously optimizing multiple conflicting objectives.
+- **Graph/Structure Learning**: Discovering optimal network structures and architectures.
+- **Manifold-Constrained Optimization**: Optimizing on special manifolds (SPD matrices, probability simplices).
+- **Clustering/Partitioning**: Learning optimal groupings and stratifications.
 
 ## Installation
 
@@ -44,12 +47,15 @@ pip install seaborn
 
 ## Key Features
 
-- **Multiple Selection Types**:
-  - Unordered Set (UOS): Selection where order doesn't matter
-  - Ordered Set (OS): Selection where order matters
-  - Multi-sets (UOMS, OMS): Selections with repeated elements
-  - Boolean (BOOL): Binary selection
-  - Continuous (DBL): Numeric variable optimization
+- **Comprehensive Decision Variable Types**:
+  - **Core Types**: Continuous (`DBL`), Binary (`BOOL`), Subsets (`UOS`, `OS`), Multisets (`UOMS`, `OMS`)
+  - **Graph/Structure Optimization**: Weighted graphs (`GRAPH_W`), Unweighted graphs (`GRAPH_U`)
+  - **Manifold-Constrained**: SPD matrices (`SPD`), Probability simplex (`SIMPLEX`)
+  - **Clustering/Partitioning**: Group assignment optimization (`PARTITION`)
+  - **Mixed Forms**: Arbitrary combinations of variable types in single optimization
+  - **Multi-Objective**: Pareto front optimization with NSGA-II/NSGA-III
+  
+  See [CAPABILITIES.md](CAPABILITIES.md) for complete documentation.
 
 - **Built-in Optimization Criteria**:
   - CDMean: For mixed models, optimizing prediction accuracy
@@ -62,15 +68,23 @@ pip install seaborn
   - Coverage: Minimizing the maximum distance from any candidate to the nearest selected sample
 
 - **Advanced Optimization Algorithms**:
-  - Genetic Algorithm (GA): Population-based optimization
+  - Genetic Algorithm (GA): Population-based optimization with specialized operators for each variable type
   - Simulated Annealing (SANN): Fine-tuning solutions
   - Island Model: Multiple populations evolving in parallel
-  - Multi-objective optimization with diverse Pareto front solutions
-  - Solution Diversity: Mechanism to ensure uniqueness of solutions on the Pareto front
+  - Multi-objective optimization (NSGA-II/NSGA-III) with diverse Pareto front solutions
+  - **Neural Network-Enhanced Optimization**: VAE and GAN for learning solution distributions
+  - **CMA-ES Integration**: Covariance Matrix Adaptation for continuous optimization
+  - **Surrogate Models**: Gaussian Process models for expensive fitness functions
+
+- **Constraint Handling**:
+  - Automatic repair mechanisms for manifold-constrained variables (SPD, SIMPLEX)
+  - Graph structure preservation during genetic operations
+  - Custom repair functions for domain-specific constraints
 
 - **Parallelization**:
-  - Support for parallel computing to speed up optimization
-  - Different parallelization strategies for different optimization scenarios
+  - Multi-core parallel fitness evaluation
+  - Island model parallelization
+  - GPU acceleration for neural network components (when available)
 
 ## Basic Usage
 
@@ -206,6 +220,78 @@ result = train_sel(
     settypes=["UOS", "OS"],               # Different types
     stat=custom_fitness,
     control=control
+)
+```
+
+### Graph Structure Learning (New!)
+
+```python
+# Optimize a causal graph structure and edge weights
+def causal_fitness(dbl_vals, data):
+    """Learn DAG structure from observational data"""
+    flat_graph = dbl_vals[0]  # GRAPH_W adjacency
+    noise_vars = dbl_vals[1]   # DBL noise variances
+    
+    n = int(np.sqrt(len(flat_graph)))
+    W = flat_graph.reshape(n, n)
+    
+    # Score based on fit to empirical covariance
+    # (see examples/universal_optimization_demo.py for full implementation)
+    return -dag_loss(W, noise_vars, data)
+
+result = train_sel(
+    candidates=[list(range(5))] * 2,  # 5 nodes
+    setsizes=[25, 5],                  # 5×5 graph + 5 noise vars
+    settypes=["GRAPH_W", "DBL"],
+    stat=causal_fitness,
+    control=train_sel_control(npop=50, niterations=20, use_vae=True)
+)
+```
+
+### Metric Learning with Feature Selection (New!)
+
+```python
+# Learn Mahalanobis metric and select features jointly
+def metric_fitness(mask, flat_spd, data):
+    """Optimize metric for class separation"""
+    n = int(np.sqrt(len(flat_spd)))
+    M = flat_spd.reshape(n, n)  # SPD metric matrix
+    
+    # Compute Fisher discriminant ratio with selected features
+    X_masked = data['X'] * mask.astype(float)
+    # ... compute between/within scatter matrices ...
+    return fisher_ratio(M, X_masked, data['y'])
+
+result = train_sel(
+    candidates=[list(range(n_features)), []],
+    setsizes=[n_features, n_features * n_features],
+    settypes=["BOOL", "SPD"],
+    stat=metric_fitness,
+    control=train_sel_control(npop=30, niterations=10)
+)
+```
+
+### Portfolio Optimization with Clustering (New!)
+
+```python
+# Cluster assets and allocate weights simultaneously
+def portfolio_fitness(partition, weights, data):
+    """Maximize Sharpe ratio with balanced clusters"""
+    returns = np.dot(weights, data['means'])
+    risk = np.sqrt(weights.T @ data['cov'] @ weights)
+    sharpe = returns / risk
+    
+    # Penalize imbalanced clusters
+    cluster_balance = compute_balance_penalty(partition, weights)
+    
+    return sharpe - cluster_balance
+
+result = train_sel(
+    candidates=[list(range(n_clusters)), []],
+    setsizes=[n_assets, n_assets],
+    settypes=["PARTITION", "SIMPLEX"],  # Clustering + Weights
+    stat=portfolio_fitness,
+    control=train_sel_control(npop=50, niterations=15)
 )
 ```
 

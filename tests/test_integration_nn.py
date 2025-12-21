@@ -7,23 +7,21 @@ def simple_fitness(int_vals, dbl_vals, data):
     # Try to maximize sum of elements
     fit = 0
     if int_vals:
-        # Check if list of lists or single list
-        if isinstance(int_vals[0], list):
-            for v in int_vals:
-                if v: fit += sum(v)
-        else:
-            fit += sum(int_vals)
+        # int_vals is a list of numpy arrays (one per decision variable)
+        # Iterate through each array and sum
+        for v in int_vals:
+            if hasattr(v, 'sum'):
+                fit += v.sum()
+            elif v:
+                fit += sum(v)
             
     if dbl_vals is not None and len(dbl_vals) > 0:
-        if isinstance(dbl_vals[0], list) or (hasattr(dbl_vals[0], '__len__') and not isinstance(dbl_vals[0], (str, bytes))):
-             # Handle list of lists or 2D array
-            for v in dbl_vals:
-                if hasattr(v, 'sum'): fit += v.sum()
-                elif v: fit += sum(v)
-        else:
-            # 1D array or list
-            if hasattr(dbl_vals, 'sum'): fit += dbl_vals.sum()
-            else: fit += sum(dbl_vals)
+        # dbl_vals is also a list of numpy arrays
+        for v in dbl_vals:
+            if hasattr(v, 'sum'):
+                fit += v.sum()
+            elif v:
+                fit += sum(v)
     return fit
 
 def test_ga_with_vae_gan():

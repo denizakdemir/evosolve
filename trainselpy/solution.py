@@ -11,9 +11,9 @@ class Solution:
 
     Attributes
     ----------
-    int_values : List[List[int]]
+    int_values : List[np.ndarray]
         Integer-valued decision variables (for UOS, OS, UOMS, OMS, BOOL set types)
-    dbl_values : List[List[float]]
+    dbl_values : List[np.ndarray]
         Continuous decision variables (for DBL set type)
     fitness : float
         Scalar fitness value (sum of objectives for multi-objective)
@@ -22,31 +22,25 @@ class Solution:
     """
     def __init__(
         self,
-        int_values: List[List[int]] = None,
-        dbl_values: List[List[float]] = None,
+        int_values: List[Any] = None,
+        dbl_values: List[Any] = None,
         fitness: float = float('-inf'),
         multi_fitness: List[float] = None
     ):
-        # Normalize inputs to lists (handle numpy arrays from initialization)
+        # Normalize inputs to lists of numpy arrays
         if int_values is None:
             self.int_values = []
         else:
             self.int_values = [
-                list(x) if not isinstance(x, list) else x
-                for x in int_values
+                np.asarray(x, dtype=int) for x in int_values
             ]
 
         if dbl_values is None:
             self.dbl_values = []
         else:
-            self.dbl_values = []
-            for x in dbl_values:
-                if isinstance(x, np.ndarray):
-                    self.dbl_values.append(x.tolist())
-                elif isinstance(x, list):
-                    self.dbl_values.append(x)
-                else:
-                    self.dbl_values.append(list(x))
+            self.dbl_values = [
+                np.asarray(x, dtype=float) for x in dbl_values
+            ]
 
         self.fitness = float(fitness) if fitness is not None else float('-inf')
         self.multi_fitness = list(multi_fitness) if multi_fitness is not None else []
@@ -57,18 +51,10 @@ class Solution:
 
     def copy(self):
         """Create a deep copy of the solution."""
-        # Copy integer values (each sublist is explicitly copied)
-        int_copy = [list(x) if isinstance(x, list) else x.tolist() for x in self.int_values]
-        # Copy double values - handle both lists and numpy arrays
-        dbl_copy = []
-        for x in self.dbl_values:
-            if isinstance(x, np.ndarray):
-                dbl_copy.append(x.tolist())
-            elif isinstance(x, list):
-                dbl_copy.append(list(x))
-            else:
-                # Handle other iterables
-                dbl_copy.append(list(x))
+        # Copy integer values (numpy arrays need explicit copy)
+        int_copy = [x.copy() for x in self.int_values]
+        # Copy double values
+        dbl_copy = [x.copy() for x in self.dbl_values]
         # Always copy multi_fitness as a list (even if empty)
         multi_fit_copy = self.multi_fitness.copy() if self.multi_fitness else []
         new_sol = Solution(int_copy, dbl_copy, self.fitness, multi_fit_copy)
@@ -91,10 +77,14 @@ class Solution:
             return self._hash_cache
 
         # Create hash from integer and double values
-        int_tuple = tuple(tuple(iv) for iv in self.int_values)
-        # Round doubles to avoid precision issues, but ensure mutated values (which change significantly) are different
+        # Convert arrays to tuples for hashing
+        # Ensure it works even if stored as list (defensive coding)
+        int_tuple = tuple(tuple(np.asarray(iv).tolist()) for iv in self.int_values)
+        
+        # Round doubles to avoid precision issues
         # Using 8 decimals should be safe for caching within a run
-        dbl_tuple = tuple(tuple(round(v, 8) for v in dv) for dv in self.dbl_values)
+        # Convert to rounded tuple
+        dbl_tuple = tuple(tuple(np.round(np.asarray(dv), 8).tolist()) for dv in self.dbl_values)
 
         self._hash_cache = hash((int_tuple, dbl_tuple))
         self._hash_valid = True
@@ -110,19 +100,21 @@ class Solution:
         return self.fitness < other.fitness
 
 
-def flatten_dbl_values(dbl_values: List[List[float]]) -> np.ndarray:
+def flatten_dbl_values(dbl_values: List[Any]) -> np.ndarray:
     """Flatten double values into a single numpy array."""
     if not dbl_values:
         return np.array([])
-    return np.concatenate([np.array(x) for x in dbl_values])
+    return np.concatenate([np.asarray(x) for x in dbl_values])
 
 
-def unflatten_dbl_values(flat_values: np.ndarray, template: List[List[float]]) -> List[List[float]]:
-    """Unflatten numpy array back into list of lists structure."""
+def unflatten_dbl_values(flat_values: np.ndarray, template: List[Any]) -> List[np.ndarray]:
+    """Unflatten numpy array back into list of numpy arrays structure."""
     result = []
     idx = 0
     for sublist in template:
+        # sublist is expected to be array-like, so len() works if it's correct
+        # or size if it's numpy array. Use len(sublist) safely.
         size = len(sublist)
-        result.append(flat_values[idx:idx+size].tolist())
+        result.append(flat_values[idx:idx+size].copy()) # .copy() to own memory?
         idx += size
     return result

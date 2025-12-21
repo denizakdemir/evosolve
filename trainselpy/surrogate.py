@@ -62,6 +62,33 @@ class SurrogateModel:
             self.model = RandomForestRegressor(n_estimators=100, n_jobs=1)
         else:
             raise ValueError(f"Unknown model type: {model_type}")
+
+    def _encode_values(self, int_values: List[List[int]], dbl_values: List[List[float]]) -> np.ndarray:
+        """
+        Encode values directly into a feature vector using internal data structures.
+        Avoids dependency on Solution object structure.
+        """
+        features = []
+        
+        # Encode integer values (One-Hot-ish)
+        for i, values in enumerate(int_values):
+            vec = np.zeros(self.int_dims[i])
+            
+            # Simple mapping assuming candidates[i] contains the values
+            # Optimization: Map creation could be cached in __init__ for very large candidate sets
+            cand_map = {val: idx for idx, val in enumerate(self.candidates[i])}
+            
+            for val in values:
+                if val in cand_map:
+                    vec[cand_map[val]] = 1.0
+            
+            features.append(vec)
+            
+        # Encode double values
+        if dbl_values:
+            features.append(flatten_dbl_values(dbl_values))
+            
+        return np.concatenate(features)
             
     def encode(self, solution: Solution) -> np.ndarray:
         """
@@ -77,51 +104,7 @@ class SurrogateModel:
         np.ndarray
             Feature vector
         """
-        features = []
-        
-        # Encode integer values (One-Hot-ish)
-        for i, values in enumerate(solution.int_values):
-            # Create zero vector for this set
-            vec = np.zeros(self.int_dims[i])
-            # Set selected indices to 1
-            # Note: values are indices into candidates[i]
-            # But wait, are they indices into candidates[i] or indices into the global pool?
-            # In genetic_algorithm.py:
-            # selected = np.random.choice(cand, size=size, replace=False)
-            # So they are values from candidates[i].
-            # We need to map value -> index in candidates[i]
-            
-            # Optimization: Pre-compute map if needed, but for now linear scan or assuming 
-            # candidates are 0..N-1 is risky.
-            # Let's assume candidates[i] is a list of integers.
-            # We need to find the index of each selected value in candidates[i].
-            
-            # To make this fast, we should probably cache the mapping in __init__
-            # But for now, let's assume values ARE indices if candidates is just range(N).
-            # If candidates is arbitrary integers, we need the map.
-            
-            # Let's create a map in __init__?
-            # Actually, let's just use the values directly if they are small integers?
-            # No, safest is to map.
-            
-            # For efficiency, let's assume the user provided candidates are sorted or we just use
-            # the raw values if they fit in the vector?
-            # Let's check how candidates are used.
-            # In GA: `sol.int_values.append(selected)` where `selected` is subset of `cand`.
-            
-            # Let's do a safe mapping.
-            cand_map = {val: idx for idx, val in enumerate(self.candidates[i])}
-            for val in values:
-                if val in cand_map:
-                    vec[cand_map[val]] = 1.0
-            
-            features.append(vec)
-            
-        # Encode double values
-        if solution.dbl_values:
-            features.append(flatten_dbl_values(solution.dbl_values))
-            
-        return np.concatenate(features)
+        return self._encode_values(solution.int_values, solution.dbl_values)
 
     def fit(self, solutions: List[Solution], fitnesses: List[float]) -> None:
         """
@@ -178,3 +161,33 @@ class SurrogateModel:
             
         return np.zeros(len(solutions)), np.zeros(len(solutions))
 
+    def predict_from_values(self, int_values: List[List[int]], dbl_values: List[List[float]]) -> Tuple[float, float]:
+        """
+        Predict fitness from raw values, avoiding Solution creation overhead.
+        
+        Parameters
+        ----------
+        int_values : List[List[int]]
+            Integer solution values
+        dbl_values : List[List[float]]
+            Double solution values
+            
+        Returns
+        -------
+        Tuple[float, float]
+            Mean and std for the single solution
+        """
+        if not self.is_fitted:
+            return 0.0, 1.0
+
+        # Note: predict expects 2D array (n_samples, n_features)
+        X = self._encode_values(int_values, dbl_values).reshape(1, -1)
+        
+        if self.model_type == "gp":
+            mean, std = self.model.predict(X, return_std=True)
+            return mean[0], std[0]
+        elif self.model_type == "rf":
+            mean = self.model.predict(X)
+            return mean[0], 0.0
+            
+        return 0.0, 0.0

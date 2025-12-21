@@ -34,4 +34,15 @@ from trainselpy.utils import (
 # Import data module
 from trainselpy.data import wheat_data
 
+
+# Import relaxations module
+from trainselpy.relaxations import (
+    DOptimality,
+    AOptimality,
+    CDMeanOptimality,
+    PEVOptimality,
+    ConvexRelaxationSolver,
+    discretize
+)
+
 __version__ = "0.1.1"

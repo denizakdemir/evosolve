@@ -26,22 +26,19 @@ class TestTrainSelPy(unittest.TestCase):
             self.assertEqual(len(sol.dbl_values), 0)
 
     def test_crossover(self):
-        parent1 = Solution()
-        parent1.int_values = [[1, 2, 3]]
-        parent2 = Solution()
-        parent2.int_values = [[4, 5, 6]]
+        parent1 = Solution(int_values=[[1, 2, 3]])
+        parent2 = Solution(int_values=[[4, 5, 6]])
         
         parents = [parent1, parent2]
         offspring = crossover(parents, crossprob=1.0, crossintensity=0.5, settypes=["UOS"], candidates=[[1, 2, 3, 4, 5, 6]])
         
         self.assertEqual(len(offspring), 2)
         # Check if crossover happened (some values swapped)
-        # Note: with seed 42 and these params, we expect some change
-        self.assertNotEqual(offspring[0].int_values, parent1.int_values)
+        # Compare arrays properly
+        self.assertFalse(np.array_equal(offspring[0].int_values[0], parent1.int_values[0]))
 
     def test_mutation(self):
-        pop = [Solution()]
-        pop[0].int_values = [[1, 2, 3]]
+        pop = [Solution(int_values=[[1, 2, 3]])]
         
         candidates = [[1, 2, 3, 4, 5]]
         settypes = ["UOS"]
@@ -50,7 +47,7 @@ class TestTrainSelPy(unittest.TestCase):
         mutation(pop, candidates, settypes, mutprob=1.0, mutintensity=1.0)
         
         # Check if mutation happened
-        self.assertNotEqual(pop[0].int_values, [[1, 2, 3]])
+        self.assertFalse(np.array_equal(pop[0].int_values[0], np.array([1, 2, 3])))
 
     def test_selection(self):
         pop = []
@@ -74,6 +71,9 @@ class TestTrainSelPy(unittest.TestCase):
         settypes = ["UOS"]
         
         def fitness(sol, data):
+            # Sol is array now? NO, prepare_function_args returns what the storage is.
+            # If sol.int_values is list[ndarray], arg is ndarray (if len 1)
+            # sum(sol) works on ndarray
             return sum(sol)
             
         data = {}
@@ -115,16 +115,10 @@ class TestTrainSelPy(unittest.TestCase):
         data = {}
         surrogate = MockSurrogate()
         
-        # We need to monkeypatch SurrogateModel in algorithms.py or pass it?
-        # genetic_algorithm creates its own SurrogateModel if use_surrogate=True.
-        # But we can't easily inject our mock into genetic_algorithm.
-        # However, we can test evaluate_fitness directly.
-        
         from trainselpy.algorithms import evaluate_fitness
-        from trainselpy.solution import Solution
         
-        pop = [Solution()]
-        pop[0].int_values = [[1, 2, 3]]
+        # Correct initialization using constructor to ensure array storage
+        pop = [Solution(int_values=[[1, 2, 3]])]
         
         control = {"use_surrogate_objective": True}
         
@@ -143,6 +137,12 @@ class TestTrainSelPy(unittest.TestCase):
                 means = [float(sum(sol.int_values[0])) for sol in solutions]
                 stds = [0.0] * len(solutions)
                 return means, stds
+
+            def predict_from_values(self, int_values, dbl_values):
+                score = 0.0
+                if int_values is not None and len(int_values) > 0:
+                    score = float(sum(int_values[0]))
+                return score, 0.0
                 
         from trainselpy.algorithms import generate_from_surrogate
         
@@ -154,6 +154,7 @@ class TestTrainSelPy(unittest.TestCase):
         generated = generate_from_surrogate(surrogate, candidates, setsizes, settypes, n_solutions=2, n_iter=10)
         
         self.assertEqual(len(generated), 2)
+        # Check length of generated array
         self.assertEqual(len(generated[0].int_values[0]), 3)
 
 if __name__ == '__main__':
