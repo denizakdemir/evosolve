@@ -36,7 +36,7 @@ class ParticleDistribution:
     def __init__(self, particles: List[Solution], weights: np.ndarray):
         """
         Create a particle distribution.
-        
+
         Parameters
         ----------
         particles : List[Solution]
@@ -44,38 +44,78 @@ class ParticleDistribution:
         weights : np.ndarray
             Particle weights (will be normalized)
         """
+        # Input validation
+        if len(particles) == 0:
+            raise ValueError("Particle list cannot be empty")
+
         self.particles = particles
         self.K = len(particles)
-        
+
         # Normalize weights
         weights = np.asarray(weights, dtype=float)
+
+        # Check for NaN or infinite weights
+        if np.any(np.isnan(weights)):
+            raise ValueError("Weights contain NaN values")
+        if np.any(np.isinf(weights)):
+            raise ValueError("Weights contain infinite values")
+
+        # Handle zero-sum weights with warning
         if weights.sum() == 0:
+            import warnings
+            warnings.warn("All weights are zero; defaulting to uniform distribution")
             weights = np.ones(len(weights))
+
         self.weights = weights / weights.sum()
-        
+
         assert len(self.particles) == len(self.weights), \
             "Number of particles must match number of weights"
     
-    def sample(self, n: int) -> List[Solution]:
+    def sample(self, n: int, copy: bool = True) -> List[Solution]:
         """
         Sample n solutions from the distribution.
-        
+
         Parameters
         ----------
         n : int
             Number of samples
-            
+        copy : bool, optional
+            If True (default), return independent copies of the particles.
+            If False, return references to the original particles.
+            Set to False when samples will NOT be modified (e.g., for evaluation only).
+            Set to True when samples will be modified (e.g., before mutation).
+
         Returns
         -------
         List[Solution]
-            Sampled solutions (independent copies)
+            Sampled solutions (copies if copy=True, references if copy=False)
+
+        Notes
+        -----
+        **Performance Optimization**: When sampling for read-only operations (e.g.,
+        fitness evaluation), use `copy=False` to avoid expensive deep copying of
+        large or complex solutions. Only use `copy=True` when the samples will be
+        modified, such as before applying mutation operators.
+
+        Examples
+        --------
+        >>> # For evaluation (read-only), use copy=False for better performance
+        >>> samples = dist.sample(100, copy=False)
+        >>> fitness_vals = [eval_fitness(s) for s in samples]
+        >>>
+        >>> # For mutation (will modify), use copy=True
+        >>> samples = dist.sample(10, copy=True)
+        >>> mutate(samples, ...)  # Safe to modify
         """
         # Sample particle indices according to weights
         indices = np.random.choice(self.K, size=n, p=self.weights)
-        
-        # Return copies of the selected particles
-        samples = [self.particles[idx].copy() for idx in indices]
-        
+
+        # Return copies or references based on flag
+        if copy:
+            samples = [self.particles[idx].copy() for idx in indices]
+        else:
+            samples = [self.particles[idx] for idx in indices]
+
         return samples
     
     def get_base_structure(self) -> Dict[str, Any]:
@@ -210,15 +250,15 @@ def mean_objective(
     if data is None:
         data = {}
     
-    # Sample from distribution
-    samples = dist.sample(n_samples)
-    
+    # Sample from distribution (read-only evaluation, so no copy needed)
+    samples = dist.sample(n_samples, copy=False)
+
     # Evaluate each sample
     fitness_values = []
     for sol in samples:
         f = base_fitness_fn(sol.int_values, sol.dbl_values, data)
         fitness_values.append(f)
-    
+
     # Return mean
     return float(np.mean(fitness_values))
 
@@ -284,7 +324,8 @@ def sample_distribution_objectives(
     """
     if data is None:
         data = {}
-    samples = dist.sample(n_samples)
+    # Sample for evaluation only (read-only), so no copy needed
+    samples = dist.sample(n_samples, copy=False)
 
     def _call_base_fitness(sol: Solution) -> Any:
         # Handle stray DistributionalSolution particles by unwrapping first particle
@@ -556,16 +597,16 @@ def mean_variance_objective(
     if data is None:
         data = {}
     
-    # Sample and evaluate
-    samples = dist.sample(n_samples)
+    # Sample and evaluate (read-only, so no copy needed)
+    samples = dist.sample(n_samples, copy=False)
     fitness_values = np.array([
         base_fitness_fn(sol.int_values, sol.dbl_values, data)
         for sol in samples
     ])
-    
+
     mean_fitness = np.mean(fitness_values)
     var_fitness = np.var(fitness_values)
-    
+
     return float(mean_fitness + lambda_var * var_fitness)
 
 
@@ -640,9 +681,9 @@ def cvar_objective(
     # Case 2: Fitness function provided (Monte Carlo estimation)
     if data is None:
         data = {}
-    
-    # Sample and evaluate
-    samples = dist.sample(n_samples)
+
+    # Sample and evaluate (read-only, so no copy needed)
+    samples = dist.sample(n_samples, copy=False)
     fitness_values = np.array([
         base_fitness_fn(sol.int_values, sol.dbl_values, data)
         for sol in samples
@@ -698,7 +739,7 @@ def entropy_regularized_objective(
     # Avoid log(0)
     w_safe = w[w > 0]
     entropy = -np.sum(w_safe * np.log(w_safe))
-    
+
     # Compute expected fitness
     if not callable(base_fitness_fn):
         fv = np.asarray(base_fitness_fn, dtype=float)
@@ -707,19 +748,8 @@ def entropy_regularized_objective(
         e_fit = np.sum(dist.weights * fv)
     else:
         e_fit = mean_objective(dist, base_fitness_fn, n_samples, data)
-    
+
     return float(e_fit + tau * entropy)
-    
-    # Compute mean fitness
-    mean_fit = mean_objective(dist, base_fitness_fn, n_samples, data)
-    
-    # Compute entropy H(μ) = -Σ w_i log(w_i)
-    # Handle zero weights
-    weights = dist.weights
-    log_weights = np.log(weights + 1e-10)
-    entropy = -np.sum(weights * log_weights)
-    
-    return float(mean_fit + tau * entropy)
 
 
 # =============================================================================
@@ -845,11 +875,110 @@ def compress_kmeans(
     **kwargs
 ) -> Union[Tuple[List[Solution], np.ndarray], ParticleDistribution]:
     """
-    Compress via clustering (simplified implementation).
-    
-    Checks for 'K' or 'k' parameter and delegates to compress_top_k.
+    Compress via K-means clustering in the decision space.
+
+    Attempts to use scikit-learn's KMeans if available. If not available,
+    falls back to compress_top_k with a warning.
+
+    Parameters
+    ----------
+    particles : List[Solution] or ParticleDistribution
+        Original particles or distribution object
+    weights : np.ndarray, optional
+        Original weights (if particles is a list)
+    K : int, optional
+        Target number of particles (clusters). Can also use 'k' as keyword argument.
+
+    Returns
+    -------
+    Tuple[List[Solution], np.ndarray] or ParticleDistribution
+        Compressed result (same type as input)
     """
-    return compress_top_k(particles, weights, K, **kwargs)
+    # Handle keyword argument 'k'
+    if K is None:
+        K = kwargs.get('k')
+    if K is None:
+        raise ValueError("Target size 'K' or 'k' must be specified")
+
+    # Handle ParticleDistribution input
+    is_dist = isinstance(particles, ParticleDistribution)
+    if is_dist:
+        dist = particles
+        p_list = dist.particles
+        w_arr = dist.weights
+    else:
+        p_list = particles
+        w_arr = weights
+        if w_arr is None:
+            raise ValueError("Weights must be provided if particles is a list")
+
+    # If K >= number of particles, no compression needed
+    if K >= len(p_list):
+        if is_dist:
+            return dist
+        return p_list, w_arr
+
+    # Try to use scikit-learn KMeans
+    try:
+        from sklearn.cluster import KMeans
+
+        # Extract features from particles for clustering
+        # We'll use a simple approach: flatten all int and dbl values
+        features = []
+        for p in p_list:
+            feat = []
+            for int_arr in p.int_values:
+                feat.extend(int_arr.flatten().tolist())
+            for dbl_arr in p.dbl_values:
+                feat.extend(dbl_arr.flatten().tolist())
+            features.append(feat)
+
+        features_arr = np.array(features, dtype=float)
+
+        # Perform K-means clustering
+        kmeans = KMeans(n_clusters=K, random_state=42, n_init=10)
+        labels = kmeans.fit_predict(features_arr, sample_weight=w_arr)
+
+        # For each cluster, select the particle closest to the centroid
+        new_particles = []
+        new_weights = []
+
+        for cluster_idx in range(K):
+            cluster_mask = labels == cluster_idx
+            if not np.any(cluster_mask):
+                # Empty cluster, skip
+                continue
+
+            cluster_particles = [p_list[i] for i in range(len(p_list)) if cluster_mask[i]]
+            cluster_weights = w_arr[cluster_mask]
+            cluster_features = features_arr[cluster_mask]
+
+            # Find particle closest to centroid
+            centroid = kmeans.cluster_centers_[cluster_idx]
+            distances = np.linalg.norm(cluster_features - centroid, axis=1)
+            closest_idx = np.argmin(distances)
+
+            # Add the closest particle with aggregated weight
+            new_particles.append(cluster_particles[closest_idx].copy())
+            new_weights.append(cluster_weights.sum())
+
+        # Normalize weights
+        new_weights = np.array(new_weights)
+        new_weights = new_weights / new_weights.sum()
+
+        if is_dist:
+            return ParticleDistribution(new_particles, new_weights)
+        return new_particles, new_weights
+
+    except ImportError:
+        # Scikit-learn not available, fall back to top_k
+        import warnings
+        warnings.warn(
+            "scikit-learn not available for K-means clustering. "
+            "Falling back to compress_top_k instead.",
+            RuntimeWarning
+        )
+        return compress_top_k(particles, weights, K, **kwargs)
 
 
 # =============================================================================

@@ -90,20 +90,119 @@ class SurrogateModel:
             
         return np.concatenate(features)
             
-    def encode(self, solution: Solution) -> np.ndarray:
+    def _encode_distributional(self, dist_solution) -> np.ndarray:
         """
-        Encode a solution into a feature vector.
-        
+        Encode a DistributionalSolution into a feature vector.
+
+        Extracts statistical features from the distribution:
+        - Mean values (expected value of each decision variable)
+        - Variance values (variance of each decision variable)
+        - Distribution entropy
+        - Number of particles (K)
+
         Parameters
         ----------
-        solution : Solution
+        dist_solution : DistributionalSolution
+            Distributional solution to encode
+
+        Returns
+        -------
+        np.ndarray
+            Feature vector representing the distribution
+        """
+        dist = dist_solution.distribution
+        particles = dist.particles
+        weights = dist.weights
+
+        # Extract int_values and dbl_values from all particles
+        # Compute weighted mean and variance for each dimension
+
+        # Initialize accumulators
+        mean_features = []
+        var_features = []
+
+        # Process integer values
+        if particles[0].int_values:
+            for set_idx in range(len(particles[0].int_values)):
+                # Collect all values for this set across all particles
+                set_shape = particles[0].int_values[set_idx].shape
+                all_vals = np.array([p.int_values[set_idx].flatten() for p in particles])  # (K, dims)
+
+                # Weighted mean
+                mean_vals = np.sum(weights[:, None] * all_vals, axis=0)
+                # Weighted variance
+                var_vals = np.sum(weights[:, None] * (all_vals - mean_vals) ** 2, axis=0)
+
+                # Encode mean using the standard encoding
+                mean_vec = np.zeros(self.int_dims[set_idx])
+                cand_map = {val: idx for idx, val in enumerate(self.candidates[set_idx])}
+                # For continuous approximation, use fractional encoding
+                for idx, val in enumerate(mean_vals):
+                    rounded_val = int(np.round(val))
+                    if rounded_val in cand_map:
+                        mean_vec[cand_map[rounded_val]] = 1.0
+
+                mean_features.append(mean_vec)
+                # Append normalized variance (simple approach)
+                var_features.append(var_vals)
+
+        # Process double values
+        if particles[0].dbl_values:
+            all_dbl = []
+            for p in particles:
+                if p.dbl_values:
+                    all_dbl.append(flatten_dbl_values(p.dbl_values))
+                else:
+                    all_dbl.append(np.array([]))
+
+            if all_dbl and len(all_dbl[0]) > 0:
+                all_dbl = np.array(all_dbl)  # (K, dbl_dim)
+                mean_dbl = np.sum(weights[:, None] * all_dbl, axis=0)
+                var_dbl = np.sum(weights[:, None] * (all_dbl - mean_dbl) ** 2, axis=0)
+                mean_features.append(mean_dbl)
+                var_features.append(var_dbl)
+
+        # Compute entropy
+        w_safe = weights[weights > 0]
+        entropy = -np.sum(w_safe * np.log(w_safe)) if len(w_safe) > 0 else 0.0
+
+        # Concatenate all features
+        features = []
+        if mean_features:
+            features.extend(mean_features)
+        if var_features:
+            # Flatten and normalize variance features
+            var_flat = np.concatenate([v.flatten() for v in var_features])
+            # Scale variance to similar range as other features (0-1)
+            var_flat = np.clip(var_flat, 0, 10) / 10.0
+            features.append(var_flat)
+
+        # Add entropy and K as scalar features
+        features.append(np.array([entropy, float(dist.K) / 100.0]))  # Normalize K
+
+        return np.concatenate(features)
+
+    def encode(self, solution) -> np.ndarray:
+        """
+        Encode a solution into a feature vector.
+
+        Handles both regular Solution and DistributionalSolution objects.
+
+        Parameters
+        ----------
+        solution : Solution or DistributionalSolution
             Solution to encode
-            
+
         Returns
         -------
         np.ndarray
             Feature vector
         """
+        # Check if it's a DistributionalSolution
+        if hasattr(solution, 'distribution') and hasattr(solution.distribution, 'particles'):
+            return self._encode_distributional(solution)
+
+        # Regular solution
         return self._encode_values(solution.int_values, solution.dbl_values)
 
     def fit(self, solutions: List[Solution], fitnesses: List[float]) -> None:

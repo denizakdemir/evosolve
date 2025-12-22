@@ -325,8 +325,9 @@ def evaluate_fitness(
             agg_list = agg.tolist() if getattr(agg, "ndim", 0) > 0 else [float(agg)]
 
             mean_list = None
+            dist_metric = None
             if use_nsga_means:
-                # Always expose mean objectives for selection pressure (ignores scalarization)
+                # Always expose mean objectives for selection pressure
                 mean_vals = aggregate_distributional_objectives(
                     values,
                     weights=weights if eval_mode == "weighted" else None,
@@ -340,8 +341,52 @@ def evaluate_fitness(
                 )
                 mean_list = mean_vals.tolist() if getattr(mean_vals, "ndim", 0) > 0 else [float(mean_vals)]
 
+                # Compute pure distributional metric (not aggregated with means)
+                # This extracts just the risk/diversity measure
+                # Special case: if obj_type == "mean", don't duplicate the mean objectives
+                if obj_type == "mean":
+                    # Don't add separate distributional metric (it's the same as mean_list)
+                    dist_metric = None
+                elif obj_type == "cvar":
+                    # For CVaR, compute it separately
+                    cvar_vals = aggregate_distributional_objectives(
+                        values,
+                        weights=weights,
+                        objective_type="cvar",
+                        alpha=alpha,
+                        maximize=maximize
+                    )
+                    # Take first objective's CVaR as the distributional metric
+                    dist_metric = [float(cvar_vals[0]) if hasattr(cvar_vals, '__getitem__') else float(cvar_vals)]
+                elif obj_type == "entropy":
+                    # For entropy, compute just the entropy value
+                    ent_w = sol.distribution.weights
+                    ent_w = ent_w[ent_w > 0]
+                    entropy_val = -np.sum(ent_w * np.log(ent_w))
+                    dist_metric = [float(tau * entropy_val)]
+                elif obj_type == "mean_variance":
+                    # For mean-variance, extract variance
+                    if weights is None:
+                        var = np.var(values, axis=0)
+                    else:
+                        mean_v = np.sum(values * weights[:, None], axis=0)
+                        var = np.sum(weights[:, None] * (values - mean_v) ** 2, axis=0)
+                    # Use first objective's variance
+                    dist_metric = [float(lambda_var * var[0]) if hasattr(var, '__getitem__') else float(lambda_var * var)]
+                else:
+                    # For other objectives, use the aggregated value
+                    dist_metric = agg_list
+
             if use_nsga_means:
-                sol.multi_fitness = mean_list if mean_list is not None else agg_list
+                # CRITICAL FIX: Combine mean objectives AND distributional metric
+                # This creates a proper multi-objective optimization landscape:
+                # - Mean objectives (for base fitness optimization)
+                # - Distributional metric (for risk/diversity optimization)
+                # Example: [mean_obj1, mean_obj2, cvar] or [mean_obj1, mean_obj2, entropy]
+                if mean_list is not None and dist_metric:
+                    sol.multi_fitness = mean_list + dist_metric
+                else:
+                    sol.multi_fitness = mean_list if mean_list is not None else agg_list
                 sol.fitness = float(sum(sol.multi_fitness)) if sol.multi_fitness else float("-inf")
                 sol._dist_aggregate_objectives = agg_list
             elif n_stat > 1:
@@ -1865,6 +1910,16 @@ def genetic_algorithm(
     
     # NSGA-III Setup
     use_nsga3, reference_points = _initialize_nsga3(n_stat, pop_size, control)
+
+    # Check for incompatible CMA-ES + Distributional combination
+    use_cma_es = control.get("use_cma_es", False)
+    has_distributional = any("DIST:" in st for st in settypes)
+    if use_cma_es and has_distributional:
+        raise ValueError(
+            "CMA-ES is not currently compatible with Distributional Genetic Algorithms. "
+            "Please set use_cma_es=False in the control parameters when using distributional "
+            "optimization (settypes containing 'DIST:')."
+        )
 
     # Initialize population
     population = initialize_population(candidates, setsizes, settypes, pop_size, control)

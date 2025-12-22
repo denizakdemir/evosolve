@@ -82,59 +82,6 @@ class DecisionStructure:
             
         return torch.cat(parts, dim=1)
 
-    def encode_solution(self, solutions, device='cpu'):
-        """
-        Encodes a list of Solution objects into a single tensor v.
-        """
-        # We assume solutions have .int_values and .dbl_values matching the structure.
-        # Structure definition:
-        # binary_dim corresponds to one or more BOOL sets?
-        # permutation_dims correspond to OS/UOS/OMS/UOMS sets?
-        # This mapping is a bit loose in the current __init__. 
-        # Ideally, DecisionStructure should know which set index corresponds to what.
-        
-        # For this implementation, we assume a strict ordering matching __init__:
-        # 1. Binary sets (flattened into binary_dim bits)
-        # 2. Permutation sets (in order)
-        # 3. Continuous sets (flattened)
-        
-        batch_parts = []
-        n_sols = len(solutions)
-        
-        # We need to map from "list of lists" to flat vectors.
-        # Since DecisionStructure doesn't store "which index is which set type",
-        # we have to rely on the caller or external knowledge.
-        # BUT, the usage in GA will likely pass the whole 'population'.
-        # Let's assume the user of DecisionStructure knows how to map.
-        # Wait, that's dangerous.
-        
-        # Better: decode_raw_output assumed a structure.
-        # encode_solution must inverse it.
-        # But 'Solution' stores values, not one-hot.
-        
-        # Let's try to infer or require the separate parts. No, that makes integration hard.
-        # Let's update `__init__` to store `set_config`?
-        
-        # Assuming provided solutions are LISTS of integer/double arrays for now?
-        # No, the method signature is `encode_solution(self, solutions)`.
-        # Taking `Solution` objects.
-        
-        # To make this robust, we should probably pass the data in parts if we can't easily map `Solution` to structure.
-        # OR, we assume `solutions` is a list of objects that we extract data from strictly.
-        
-        # Let's assume strict structure:
-        # int_values[0] -> binary bits for first binary segment?
-        # This is getting complicated because `Solution` clumps all int lists together.
-        
-        # Simplification for integration:
-        # We will parse `Solution` objects into flat lists first based on metadata passed to `_train_neural_models`,
-        # then pass those flat lists here?
-        # No, `encode_solution` should be the helper.
-        
-        # Let's just implement `encode_vectors` taking explicit parts:
-        # binary_vecs (N, bin_dim), perm_indices (list of (N, k)), cont_vecs (N, cont_dim).
-        pass
-
     def encode_from_parts(self, binary_part=None, perm_parts=None, cont_part=None, device='cpu'):
         """
         Encodes explicit data parts into the flat vector v.

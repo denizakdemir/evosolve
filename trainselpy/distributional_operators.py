@@ -173,7 +173,7 @@ def initialize_distributional_population(
 ) -> List[DistributionalSolution]:
     """
     Initialize population of distributional solutions.
-    
+
     Parameters
     ----------
     candidates : List[List[int]]
@@ -186,14 +186,39 @@ def initialize_distributional_population(
         Population size
     control : Dict[str, Any]
         Control parameters
-        
+
     Returns
     -------
     List[DistributionalSolution]
         Initial population of distributions
     """
     from trainselpy.algorithms import initialize_population
-    
+
+    # Check for mixed schemas (distributional + non-distributional types)
+    has_dist = any("DIST:" in st for st in settypes)
+    has_non_dist = any("DIST:" not in st for st in settypes)
+
+    if has_dist and has_non_dist:
+        raise NotImplementedError(
+            "Mixed schemas with both distributional (DIST:X) and non-distributional types "
+            "are not currently supported. All settypes must be either distributional or "
+            "non-distributional, but not a mixture."
+        )
+
+    # Check that all distributional types have the same base type
+    if has_dist:
+        base_types = []
+        for st in settypes:
+            if "DIST:" in st:
+                base_type = st.split(":")[1] if ":" in st else "BOOL"
+                base_types.append(base_type)
+
+        if len(set(base_types)) > 1:
+            raise NotImplementedError(
+                f"Multiple distributional base types {set(base_types)} are not currently supported. "
+                "All DIST: types must have the same base type."
+            )
+
     # Extract base type from DIST:TYPE
     base_type = settypes[0].split(":")[1] if ":" in settypes[0] else "BOOL"
     base_settypes = [base_type]

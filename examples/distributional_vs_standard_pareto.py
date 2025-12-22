@@ -127,6 +127,7 @@ def run_distributional_ga_multiobjective(data: dict, select_k: int, n_animals: i
         mutintensity=0.35,
         crossprob=0.85,
         crossintensity=0.6,
+        use_cma_es=False,  # CMA-ES incompatible with distributional
         # Distributional-specific
         dist_objective="cvar",  # HV (particle set) + entropy bonus
         dist_tau=0.4,

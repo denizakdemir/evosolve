@@ -294,6 +294,7 @@ def train_sel_control(
     dist_lambda_var: float = 1.0,
     dist_alpha: float = 0.1,
     dist_tau: float = 0.1,
+    dist_maximize: bool = True,
     dist_weight_mutation_prob: float = 0.5,
     dist_support_mutation_prob: float = 0.5,
     dist_birth_death_prob: float = 0.0,
@@ -479,6 +480,7 @@ def train_sel_control(
         "dist_lambda_var": dist_lambda_var,
         "dist_alpha": dist_alpha,
         "dist_tau": dist_tau,
+        "dist_maximize": dist_maximize,
         "dist_weight_mutation_prob": dist_weight_mutation_prob,
         "dist_support_mutation_prob": dist_support_mutation_prob,
         "dist_birth_death_prob": dist_birth_death_prob,
@@ -488,8 +490,202 @@ def train_sel_control(
         "dist_eval_mode": dist_eval_mode,
         "dist_use_nsga_means": dist_use_nsga_means
     }
-    
+
+    # Configuration Validation for Distributional Optimization
+    _validate_distributional_config(control)
+
     return control
+
+
+def _validate_distributional_config(control: ControlParams) -> None:
+    """
+    Validate distributional optimization configuration parameters.
+
+    Issues warnings for likely misconfigurations and raises errors for
+    incompatible combinations.
+
+    Parameters
+    ----------
+    control : ControlParams
+        Control parameters dictionary to validate
+    """
+    import warnings
+
+    dist_obj = control.get("dist_objective", "mean")
+    dist_alpha = control.get("dist_alpha", 0.1)
+    dist_tau = control.get("dist_tau", 0.1)
+    dist_lambda_var = control.get("dist_lambda_var", 1.0)
+    dist_compression = control.get("dist_compression", "top_k")
+
+    # Validate dist_objective value
+    valid_objectives = ["mean", "mean_variance", "cvar", "entropy", "hypervolume"]
+    if dist_obj not in valid_objectives:
+        raise ValueError(
+            f"Invalid dist_objective '{dist_obj}'. "
+            f"Must be one of: {', '.join(valid_objectives)}"
+        )
+
+    # Warn if CVaR-specific parameter is set but objective is not CVaR
+    if dist_alpha != 0.1 and dist_obj != "cvar":
+        warnings.warn(
+            f"dist_alpha={dist_alpha} is set but dist_objective='{dist_obj}' "
+            "(not 'cvar'). The alpha parameter only affects CVaR objectives.",
+            UserWarning
+        )
+
+    # Warn if entropy-specific parameter is set but objective is not entropy
+    if dist_tau != 0.1 and dist_obj != "entropy":
+        warnings.warn(
+            f"dist_tau={dist_tau} is set but dist_objective='{dist_obj}' "
+            "(not 'entropy'). The tau parameter only affects entropy-regularized objectives.",
+            UserWarning
+        )
+
+    # Warn if mean-variance-specific parameter is set but objective is not mean_variance
+    if dist_lambda_var != 1.0 and dist_obj != "mean_variance":
+        warnings.warn(
+            f"dist_lambda_var={dist_lambda_var} is set but dist_objective='{dist_obj}' "
+            "(not 'mean_variance'). The lambda_var parameter only affects mean-variance objectives.",
+            UserWarning
+        )
+
+    # Validate dist_compression value
+    valid_compressions = ["top_k", "resampling", "kmeans"]
+    if dist_compression not in valid_compressions:
+        warnings.warn(
+            f"Unknown dist_compression '{dist_compression}'. "
+            f"Valid options are: {', '.join(valid_compressions)}. "
+            "Defaulting to 'top_k'.",
+            UserWarning
+        )
+
+    # Validate alpha range for CVaR
+    if dist_obj == "cvar":
+        if not (0 < dist_alpha <= 1):
+            raise ValueError(
+                f"dist_alpha must be in (0, 1] for CVaR objective, got {dist_alpha}"
+            )
+
+    # Validate dist_eval_mode
+    dist_eval_mode = control.get("dist_eval_mode", "sample")
+    valid_eval_modes = ["sample", "weighted"]
+    if dist_eval_mode not in valid_eval_modes:
+        warnings.warn(
+            f"Unknown dist_eval_mode '{dist_eval_mode}'. "
+            f"Valid options are: {', '.join(valid_eval_modes)}. "
+            "Defaulting to 'sample'.",
+            UserWarning
+        )
+
+    # Validate K_particles
+    K_particles = control.get("dist_K_particles", 10)
+    if K_particles < 2:
+        raise ValueError(
+            f"dist_K_particles must be >= 2 for meaningful distributions, got {K_particles}"
+        )
+
+
+# =============================================================================
+# Distributional Optimization Presets
+# =============================================================================
+
+DISTRIBUTIONAL_PRESETS = {
+    "robust": {
+        "dist_objective": "cvar",
+        "dist_alpha": 0.2,
+        "dist_K_particles": 15,
+        "dist_maximize": False,
+        "dist_compression": "kmeans",
+        "dist_use_nsga_means": True,
+        "use_cma_es": False,  # CMA-ES incompatible with distributional
+        "__description__": "Conservative optimization focused on worst-case scenarios. "
+                          "Uses CVaR with α=0.2 (bottom 20% tail) to minimize risk."
+    },
+    "risk_averse": {
+        "dist_objective": "mean_variance",
+        "dist_lambda_var": 2.0,
+        "dist_K_particles": 12,
+        "dist_maximize": True,
+        "dist_compression": "top_k",
+        "dist_use_nsga_means": True,
+        "use_cma_es": False,  # CMA-ES incompatible with distributional
+        "__description__": "Balances performance and stability. "
+                          "Penalizes high variance solutions (λ=2.0) to prefer consistent outcomes."
+    },
+    "exploratory": {
+        "dist_objective": "entropy",
+        "dist_tau": 0.5,
+        "dist_K_particles": 20,
+        "dist_maximize": True,
+        "dist_compression": "resampling",
+        "dist_weight_mutation_prob": 0.7,
+        "dist_support_mutation_prob": 0.7,
+        "use_cma_es": False,  # CMA-ES incompatible with distributional
+        "__description__": "Encourages diversity and exploration. "
+                          "Uses entropy regularization (τ=0.5) to maintain diverse particle distributions."
+    },
+    "performance": {
+        "dist_objective": "mean",
+        "dist_K_particles": 10,
+        "dist_maximize": True,
+        "dist_compression": "top_k",
+        "dist_use_nsga_means": False,
+        "use_cma_es": False,  # CMA-ES incompatible with distributional
+        "__description__": "Pure performance optimization. "
+                          "Optimizes expected value without risk considerations."
+    }
+}
+
+
+def get_distributional_preset(preset_name: str, **overrides) -> dict:
+    """
+    Get a predefined distributional optimization configuration.
+
+    Presets provide sensible defaults for common use cases:
+
+    - **robust**: Conservative, worst-case optimization (CVaR α=0.2)
+    - **risk_averse**: Balanced performance + stability (Mean-Variance λ=2.0)
+    - **exploratory**: Maximum diversity and exploration (Entropy τ=0.5)
+    - **performance**: Pure mean performance optimization
+
+    Parameters
+    ----------
+    preset_name : str
+        Name of the preset: "robust", "risk_averse", "exploratory", or "performance"
+    **overrides
+        Additional parameters to override preset defaults
+
+    Returns
+    -------
+    dict
+        Configuration parameters suitable for train_sel_control(**config)
+
+    Examples
+    --------
+    >>> # Use robust preset with custom K
+    >>> config = get_distributional_preset("robust", dist_K_particles=20)
+    >>> control = train_sel_control(**config)
+
+    >>> # Use risk-averse preset
+    >>> config = get_distributional_preset("risk_averse")
+    >>> result = train_sel(stat=fitness_fn, candidates=...,
+    ...                    settypes=["DIST:BOOL"],
+    ...                    control=train_sel_control(**config))
+    """
+    if preset_name not in DISTRIBUTIONAL_PRESETS:
+        available = ", ".join(DISTRIBUTIONAL_PRESETS.keys())
+        raise ValueError(
+            f"Unknown preset '{preset_name}'. Available presets: {available}"
+        )
+
+    # Get preset config (excluding description)
+    config = {k: v for k, v in DISTRIBUTIONAL_PRESETS[preset_name].items()
+              if not k.startswith("__")}
+
+    # Apply overrides
+    config.update(overrides)
+
+    return config
 
 
 def set_control_default(size: str = "free", **kwargs) -> ControlParams:
