@@ -1,6 +1,6 @@
 # EvoSolve: General Purpose Evolutionary Optimization Framework
 
-A general-purpose hybrid optimizer combining Genetic Algorithms (GA), Simulated Annealing (SANN), and modern Neural enhancements. Originally derived from the EvoSolve project, EvoSolve is designed to solve a wide range of complex optimization problems involving subset selection, integer decisions, continuous variables, graph structures, and manifolds.
+A general-purpose hybrid optimizer combining Genetic Algorithms (GA), Simulated Annealing (SANN), and modern Neural enhancements. EvoSolve is designed to solve a wide range of complex optimization problems involving subset selection, integer decisions, continuous variables, graph structures, and manifolds.
 
 ## Overview
 

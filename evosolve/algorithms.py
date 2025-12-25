@@ -1252,7 +1252,9 @@ def _extract_decision_parts(solutions, settypes, setsizes, candidates):
     perm_tensors = []
     for p_list in perm_parts_list:
         if p_list:
-            perm_tensors.append(torch.tensor(p_list, dtype=torch.long))
+            # Convert list of arrays to single array first for performance (avoids warning)
+            p_arr = np.array(p_list)
+            perm_tensors.append(torch.tensor(p_arr, dtype=torch.long))
             
     if cont_parts:
         # Optimization: stack numpy arrays first to avoid warning/overhead

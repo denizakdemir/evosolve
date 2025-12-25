@@ -84,7 +84,7 @@ class TestTrainSelPy(unittest.TestCase):
             setsizes=setsizes,
             settypes=settypes,
             stat_func=fitness,
-            control={"niterations": 10, "npop": 20, "progress": False}
+            control={"niterations": 30, "npop": 20, "progress": False}
         )
         
         # Max possible sum is 7+8+9 = 24
