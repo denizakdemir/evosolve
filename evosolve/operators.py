@@ -1,5 +1,5 @@
 """
-Genetic algorithm operators for TrainSelPy.
+Genetic algorithm operators for EvoSolve.
 """
 
 import random
@@ -304,7 +304,7 @@ def crossover(
                     # This relies on the old bulk functions if they still existed, 
                     # OR we just iterate all remaining arrays as generic DBL/UOS
                     pass 
-                    # (For now assuming settypes is always provided in TrainSel context)
+                    # (For now assuming settypes is always provided in EvoSolve context)
 
                 child1.invalidate_hash()
                 child2.invalidate_hash()

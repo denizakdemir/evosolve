@@ -1,5 +1,5 @@
 """
-NSGA-III implementation for TrainSelPy.
+NSGA-III implementation for EvoSolve.
 Reference: Deb, K., & Jain, H. (2013). An evolutionary many-objective optimization algorithm using reference-point-based nondominated sorting approach, part I: solving problems with box constraints. IEEE Transactions on Evolutionary Computation.
 """
 
@@ -239,7 +239,7 @@ def nsga3_selection(
     st = selected + last_front
     objs = np.array([s.multi_fitness for s in st])
     
-    # Note: We MAXIMIZE in TrainSelPy.
+    # Note: We MAXIMIZE in EvoSolve.
     # NSGA-III is usually defined for MINIMIZATION.
     # We should negate objectives for standard NSGA-III logic, or adapt logic.
     # Let's negate to use standard minimization logic.

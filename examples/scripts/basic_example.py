@@ -1,5 +1,5 @@
 """
-Basic example of using the TrainSelPy package, restricted to the first 200 genotypes.
+Basic example of using the EvoSolve package, restricted to the first 200 genotypes.
 """
 
 import numpy as np
@@ -12,10 +12,10 @@ import os
 # Add the parent directory to sys.path to ensure we find our local fixes
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default,
     dopt
 )
@@ -27,9 +27,9 @@ from custom_cdmean import custom_cdmean as cdmean_opt
 from evosolve.data import wheat_data
 
 def main():
-    """Run a restricted example of TrainSelPy with the first 200 genotypes only."""
+    """Run a restricted example of EvoSolve with the first 200 genotypes only."""
     
-    print("TrainSelPy Basic Example (Restricted to 200 Genotypes)")
+    print("EvoSolve Basic Example (Restricted to 200 Genotypes)")
     print("------------------------------------------------------")
     
     # -------------------------------------------------------------------------
@@ -52,10 +52,10 @@ def main():
     print(f"Subset data dimensions: {M_200.shape[0]} lines, {M_200.shape[1]} markers")
     
     # -------------------------------------------------------------------------
-    # Create the TrainSel data object.
+    # Create the EvoSolve data object.
     # -------------------------------------------------------------------------
-    print("\nCreating the TrainSel data object...")
-    # TrainSelPy typically expects NumPy arrays for K, so ensure the correct format:
+    print("\nCreating the EvoSolve data object...")
+    # EvoSolve typically expects NumPy arrays for K, so ensure the correct format:
     if isinstance(K_200, pd.DataFrame):
         K_200 = K_200.values
     ts_data = make_data(K=K_200)
@@ -73,13 +73,13 @@ def main():
     # -------------------------------------------------------------------------
     # Run the selection algorithm with the CDMean (Custom) criterion.
     # -------------------------------------------------------------------------
-    print("\nRunning TrainSel with CDMean criterion...")
+    print("\nRunning EvoSolve with CDMean criterion...")
     start_time = time.time()
     
     # Make sure we pass a list of candidates the same size as M_200
     candidates = [list(range(M_200.shape[0]))]
     
-    result_cdmean = train_sel(
+    result_cdmean = evolve(
         data=ts_data,
         candidates=candidates,       # All 200 genotypes
         setsizes=[30],               # Select 30 lines
@@ -101,7 +101,7 @@ def main():
     # -------------------------------------------------------------------------
     # Run the selection algorithm with the D-optimality criterion.
     # -------------------------------------------------------------------------
-    print("\n\nRunning TrainSel with D-optimality criterion...")
+    print("\n\nRunning EvoSolve with D-optimality criterion...")
     
     # For D-optimality, we need a "FeatureMat" in ts_data
     # Convert M_200 to NumPy array if it's still a DataFrame
@@ -114,7 +114,7 @@ def main():
     ts_data["FeatureMat"] = M_200_values
     
     start_time = time.time()
-    result_dopt = train_sel(
+    result_dopt = evolve(
         data=ts_data,
         candidates=candidates,       # All 200 genotypes
         setsizes=[30],               # Select 30 lines
@@ -171,8 +171,8 @@ def main():
         plt.ylabel('PC2')
         
         plt.tight_layout()
-        plt.savefig('trainsel_basic_comparison.png')
-        print("\nComparison plot saved as 'trainsel_basic_comparison.png'.")
+        plt.savefig('evosolve_basic_comparison.png')
+        print("\nComparison plot saved as 'evosolve_basic_comparison.png'.")
     except Exception as e:
         print(f"\nCould not create visualization: {str(e)}")
     

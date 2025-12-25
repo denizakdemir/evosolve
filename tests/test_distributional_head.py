@@ -13,7 +13,7 @@ from evosolve.algorithms import (
     _select_next_generation,
 )
 from evosolve.selection import fast_non_dominated_sort
-from evosolve.core import train_sel_control
+from evosolve.core import evolve_control
 
 # Tests will be written for distributional_head module
 try:
@@ -654,8 +654,8 @@ class TestDistributionalMultiobjective:
         assert len(fronts[0]) == 2  # both should appear on the first Pareto front
 
     def test_control_supports_nsga_means_flag(self):
-        """train_sel_control should accept dist_use_nsga_means."""
-        control = train_sel_control(dist_use_nsga_means=True)
+        """evolve_control should accept dist_use_nsga_means."""
+        control = evolve_control(dist_use_nsga_means=True)
         assert control["dist_use_nsga_means"] is True
 
     def test_distributional_nsga_on_mean_objectives_scalar_setup(self):

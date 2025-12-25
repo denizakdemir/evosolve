@@ -1,7 +1,7 @@
 """
-Discrete Variable Optimization Example for TrainSelPy.
+Discrete Variable Optimization Example for EvoSolve.
 
-This example demonstrates how to use TrainSelPy for optimizing discrete variables
+This example demonstrates how to use EvoSolve for optimizing discrete variables
 in a real-world setting: Feature Selection on the Breast Cancer dataset.
 """
 
@@ -15,11 +15,11 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
-    train_sel_control
+    evolve,
+    evolve_control
 )
 
 def load_real_data():
@@ -81,7 +81,7 @@ def feature_selection_fitness(selected_indices, data):
 
 def main():
     """Run feature selection optimization example."""
-    print("TrainSelPy Feature Selection Example (Breast Cancer Dataset)")
+    print("EvoSolve Feature Selection Example (Breast Cancer Dataset)")
     print("----------------------------------------------------------")
     
     # Load data
@@ -97,7 +97,7 @@ def main():
     baseline_acc = np.mean(baseline_scores)
     print(f"Baseline Accuracy (3-fold CV): {baseline_acc:.4f}")
     
-    # Create TrainSel data object
+    # Create EvoSolve data object
     print("\nSetting up optimization...")
     # Pass X and y in the data dict for the fitness function
     ts_data = make_data(M=X) # M is required by make_data but mostly acts as a placeholder or grid here
@@ -106,7 +106,7 @@ def main():
     
     
     # Set control parameters
-    control = train_sel_control(
+    control = evolve_control(
         size="free",
         niterations=50,      # Fewer iterations for demo speed
         minitbefstop=10,     # Stop early if converged
@@ -123,7 +123,7 @@ def main():
     print("Objective: Maximize CV Accuracy - 0.001 * n_features")
     start_time = time.time()
     
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=[list(range(n_features))],  # All features are candidates
         setsizes=[n_features // 2],            # Start with half features (initial size hint)
@@ -179,7 +179,7 @@ def main():
     start_time_2 = time.time()
     
     # Use lighter control for Phase 2 as the feature space is larger
-    control_phase2 = train_sel_control(
+    control_phase2 = evolve_control(
         size="free",
         niterations=20,      # Reduced iterations
         minitbefstop=5,      
@@ -192,7 +192,7 @@ def main():
     )
 
     # We can reuse the same fitness function as it just operates on the provided 'X' matrix
-    result_phase2 = train_sel(
+    result_phase2 = evolve(
         data=ts_data_phase2,
         candidates=[list(range(n_interactions))],
         setsizes=[n_interactions // 3],  # Start smaller

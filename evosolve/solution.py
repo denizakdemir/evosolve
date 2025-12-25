@@ -1,5 +1,5 @@
 """
-Solution class and helpers for TrainSelPy.
+Solution class and helpers for EvoSolve.
 """
 
 import numpy as np

@@ -1,7 +1,7 @@
 """
-Genomic selection example for TrainSelPy.
+Genomic selection example for EvoSolve.
 
-This example demonstrates how to use TrainSelPy for optimizing training
+This example demonstrates how to use EvoSolve for optimizing training
 populations in a genomic selection context with a simulated dataset.
 """
 
@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import Ridge
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default,
     calculate_relationship_matrix,
     cdmean_opt,
@@ -76,7 +76,7 @@ def prediction_accuracy_stat(training_indices, data):
     Helper function to evaluate the prediction accuracy of a model
     trained on the selected individuals.
 
-    Note: In this example, TrainSelPy optimizes the CDMean criterion
+    Note: In this example, EvoSolve optimizes the CDMean criterion
     via ``cdmean_opt``. Prediction accuracy is used only for
     post-hoc evaluation of the selected training sets.
     
@@ -119,7 +119,7 @@ def prediction_accuracy_stat(training_indices, data):
 def main():
     """Run a genomic selection example."""
     
-    print("TrainSelPy Genomic Selection Example")
+    print("EvoSolve Genomic Selection Example")
     print("----------------------------------")
     
     # Simulate a breeding population
@@ -138,8 +138,8 @@ def main():
     print(f"Number of candidates: {len(candidate_indices)}")
     print(f"Number of test individuals: {len(test_indices)}")
     
-    # Create the TrainSel data object
-    print("\nCreating TrainSel data object...")
+    # Create the EvoSolve data object
+    print("\nCreating EvoSolve data object...")
     ts_data = make_data(M=sim_data["M"])
     
     # Add required data for our custom statistic function
@@ -190,7 +190,7 @@ def main():
         
         # Optimized selection (CDMean-optimized)
         print("  Optimized selection:")
-        result = train_sel(
+        result = evolve(
             data=ts_data,
             candidates=[candidate_indices.tolist()],
             setsizes=[size],

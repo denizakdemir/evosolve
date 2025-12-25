@@ -1,7 +1,7 @@
 """
-Continuous Variable Optimization Example for TrainSelPy.
+Continuous Variable Optimization Example for EvoSolve.
 
-This example demonstrates how to use TrainSelPy for optimizing continuous variables
+This example demonstrates how to use EvoSolve for optimizing continuous variables
 in a simplified resource allocation problem where we need to determine optimal investment
 levels across different projects to maximize returns.
 """
@@ -12,11 +12,11 @@ import matplotlib.pyplot as plt
 import time
 from typing import List, Dict, Any
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
-    train_sel_control
+    evolve,
+    evolve_control
 )
 
 def generate_projects(n_projects=10, random_seed=42):
@@ -122,8 +122,8 @@ def investment_fitness(dbl_solution, data):
     return expected_return
 
 def main():
-    """Run a continuous variable optimization example using TrainSelPy."""
-    print("TrainSelPy Continuous Variable Optimization Example")
+    """Run a continuous variable optimization example using EvoSolve."""
+    print("EvoSolve Continuous Variable Optimization Example")
     print("--------------------------------------------------")
     
     # Generate synthetic projects
@@ -139,13 +139,13 @@ def main():
               f"Risk={projects['risk_factor'][i]:.2f}, " +
               f"Max Capacity={projects['max_capacity'][i]:.2f}")
     
-    # Create TrainSel data object
+    # Create EvoSolve data object
     print("\nSetting up optimization...")
     ts_data = make_data(M=project_features)
     ts_data['projects'] = projects
     
     # Set control parameters
-    control = train_sel_control(
+    control = evolve_control(
         size="free",
         niterations=150,     # Number of iterations
         minitbefstop=30,     # Stop if no improvement for this many iterations
@@ -161,7 +161,7 @@ def main():
     print("\nRunning optimization to find optimal investment levels...")
     start_time = time.time()
     
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=[
             [0.125] * n_projects  # Initial equal investment across all projects

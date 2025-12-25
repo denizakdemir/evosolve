@@ -1,5 +1,5 @@
 """
-Data module for TrainSelPy.
+Data module for EvoSolve.
 
 This module provides access to example datasets.
 """

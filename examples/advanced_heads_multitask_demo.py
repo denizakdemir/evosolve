@@ -2,7 +2,7 @@
 Advanced Heads Multi-Objective Demonstration
 
 This script demonstrates the multi-objective optimization capabilities
-of all advanced heads in TrainSelPy:
+of all advanced heads in EvoSolve:
 - GRAPH_W (Weighted Graphs)
 - GRAPH_U (Unweighted Graphs)
 - SPD (Symmetric Positive Definite Matrices)
@@ -13,7 +13,7 @@ of all advanced heads in TrainSelPy:
 
 import numpy as np
 import matplotlib.pyplot as plt
-from evosolve.core import train_sel
+from evosolve.core import evolve
 
 np.random.seed(42)
 
@@ -48,7 +48,7 @@ def demo_graph_w_multiobjective():
         
         return [connectivity, sparsity]
     
-    result = train_sel(
+    result = evolve(
         candidates=candidates,
         setsizes=setsizes,
         settypes=settypes,
@@ -101,7 +101,7 @@ def demo_spd_multiobjective():
         
         return [det, neg_cond]
     
-    result = train_sel(
+    result = evolve(
         candidates=candidates,
         setsizes=setsizes,
         settypes=settypes,
@@ -158,7 +158,7 @@ def demo_simplex_multiobjective():
         
         return [entropy, neg_concentration]
     
-    result = train_sel(
+    result = evolve(
         candidates=candidates,
         setsizes=setsizes,
         settypes=settypes,
@@ -223,7 +223,7 @@ def demo_partition_multiobjective():
         
         return [balance, diversity]
     
-    result = train_sel(
+    result = evolve(
         data={'features': features},
         candidates=candidates,
         setsizes=setsizes,
@@ -286,7 +286,7 @@ def demo_mixed_types_multiobjective():
         
         return [network_eff, resource_eff]
     
-    result = train_sel(
+    result = evolve(
         candidates=candidates,
         setsizes=setsizes,
         settypes=settypes,
@@ -372,7 +372,7 @@ def visualize_pareto_fronts(results_dict):
 def main():
     """Run all demonstrations."""
     print("\n" + "="*70)
-    print("TRAINSELPY: Advanced Heads Multi-Objective Validation")
+    print("EVOSOLVE: Advanced Heads Multi-Objective Validation")
     print("="*70)
     print("\nDemonstrating multi-objective optimization for all advanced head types:")
     print("  • GRAPH_W (Weighted Graphs)")

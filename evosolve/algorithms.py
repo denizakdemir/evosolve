@@ -1,5 +1,5 @@
 """
-Genetic algorithm implementations for TrainSelPy.
+Genetic algorithm implementations for EvoSolve.
 """
 
 import numpy as np

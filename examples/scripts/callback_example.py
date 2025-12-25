@@ -1,5 +1,5 @@
 """
-Callback Example for TrainSelPy
+Callback Example for EvoSolve
 
 Demonstrates how to use callbacks for:
 1. Checkpointing optimization progress
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default
 )
 
@@ -260,7 +260,7 @@ def example_single_objective_with_callback():
     control["callback"] = monitor  # Attach callback
 
     # Run optimization
-    result = train_sel(
+    result = evolve(
         data=None,
         candidates=[list(range(n_features))],
         setsizes=[8],
@@ -315,7 +315,7 @@ def example_multi_objective_with_callback():
     control["callback"] = monitor
 
     # Run optimization
-    result = train_sel(
+    result = evolve(
         data=None,
         candidates=[list(range(n_features))],
         setsizes=[8],
@@ -398,7 +398,7 @@ def simple_callback_example():
     control["progress"] = False
     control["callback"] = simple_callback
 
-    result = train_sel(
+    result = evolve(
         data=None,
         candidates=[list(range(20))],
         setsizes=[5],
@@ -416,7 +416,7 @@ def simple_callback_example():
 
 if __name__ == "__main__":
     print("\n" + "#"*70)
-    print("# TrainSelPy Callback Examples")
+    print("# EvoSolve Callback Examples")
     print("#"*70)
 
     # Example 1: Single-objective with monitoring

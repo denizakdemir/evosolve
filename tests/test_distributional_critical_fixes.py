@@ -12,7 +12,7 @@ from evosolve.algorithms import (
     initialize_population,
     evaluate_fitness,
 )
-from evosolve.core import train_sel_control
+from evosolve.core import evolve_control
 from evosolve.distributional_head import (
     ParticleDistribution,
     DistributionalSolution,
@@ -41,7 +41,7 @@ class TestPhase1_1_SurrogateNNIntegration:
         candidates = [list(range(10))]
         setsizes = [5]
         settypes = ["DIST:BOOL"]
-        control = train_sel_control(dist_K_particles=3)
+        control = evolve_control(dist_K_particles=3)
 
         population = initialize_distributional_population(
             candidates, setsizes, settypes, pop_size=10, control=control
@@ -61,7 +61,7 @@ class TestPhase1_1_SurrogateNNIntegration:
         surrogate_model = MockSurrogateModel()
 
         # Enable surrogate objective
-        control = train_sel_control(
+        control = evolve_control(
             use_surrogate_objective=True,
             dist_K_particles=3
         )
@@ -103,7 +103,7 @@ class TestPhase1_1_SurrogateNNIntegration:
         candidates = [list(range(10))]
         setsizes = [5]
         settypes = ["DIST:BOOL"]
-        control = train_sel_control(
+        control = evolve_control(
             dist_K_particles=3,
             use_vae=False,  # Start with False
             use_gan=False
@@ -270,7 +270,7 @@ class TestPhase2_2_NSGAMeansLogic:
         settypes = ["DIST:BOOL"]
 
         # Single objective case
-        control = train_sel_control(
+        control = evolve_control(
             dist_K_particles=3,
             dist_objective="cvar",  # Use CVaR, not mean
             dist_alpha=0.2,
@@ -313,7 +313,7 @@ class TestPhase2_2_NSGAMeansLogic:
         settypes = ["DIST:BOOL"]
 
         # Multi-objective case (2 objectives)
-        control = train_sel_control(
+        control = evolve_control(
             dist_K_particles=3,
             dist_objective="entropy",  # Use entropy
             dist_tau=0.1,
@@ -356,7 +356,7 @@ class TestPhase2_3_MixedSchemaInit:
         setsizes = [5, 3]
         settypes = ["DIST:BOOL", "INT"]  # Mixed: distributional + standard
 
-        control = train_sel_control(dist_K_particles=3)
+        control = evolve_control(dist_K_particles=3)
 
         # This should raise a clear NotImplementedError
         with pytest.raises(NotImplementedError, match="(?i)mixed|multiple.*type"):
@@ -370,7 +370,7 @@ class TestPhase2_3_MixedSchemaInit:
         setsizes = [5]
         settypes = ["DIST:BOOL"]
 
-        control = train_sel_control(dist_K_particles=3)
+        control = evolve_control(dist_K_particles=3)
 
         # This should work
         population = initialize_distributional_population(
@@ -391,13 +391,13 @@ class TestPhase3_2_CMAESCompatibility:
 
     def test_cmaes_with_distributional_raises_error(self):
         """Test that CMA-ES + distributional raises clear error."""
-        from evosolve.core import train_sel
+        from evosolve.core import evolve
 
         candidates = [list(range(10))]
         setsizes = [5]
         settypes = ["DIST:BOOL"]
 
-        control = train_sel_control(
+        control = evolve_control(
             dist_K_particles=3,
             use_cma_es=True,  # Enable CMA-ES
             niterations=2,
@@ -409,7 +409,7 @@ class TestPhase3_2_CMAESCompatibility:
 
         # This should raise ValueError with clear message
         with pytest.raises(ValueError, match="(?i)cma.*es.*distributional"):
-            train_sel(
+            evolve(
                 stat=fitness_fn,
                 candidates=candidates,
                 setsizes=setsizes,

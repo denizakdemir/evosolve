@@ -1,5 +1,5 @@
 """
-Multi-Objective Discrete Optimization Example for TrainSelPy.
+Multi-Objective Discrete Optimization Example for EvoSolve.
 
 This example demonstrates multi-objective optimization with discrete variables,
 selecting optimal feature subsets while balancing multiple competing objectives.
@@ -13,11 +13,11 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import time
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data, 
-    train_sel, 
-    train_sel_control
+    evolve, 
+    evolve_control
 )
 
 def generate_synthetic_data(n_samples=100, n_features=20, random_seed=42):
@@ -104,7 +104,7 @@ def moo_feature_selection(selected_features, data):
 def main():
     """Run a multi-objective discrete variable optimization example."""
     
-    print("TrainSelPy Multi-Objective Discrete Optimization Example")
+    print("EvoSolve Multi-Objective Discrete Optimization Example")
     print("------------------------------------------------------")
     
     # Generate synthetic data
@@ -122,8 +122,8 @@ def main():
         print(f"{i+1:7} | {information[i]:11.4f} | {efficiency[i]:10.4f} | {costs[i]:4.2f}")
     print("...")
     
-    # Create TrainSel data object
-    print("\nCreating TrainSel data object...")
+    # Create EvoSolve data object
+    print("\nCreating EvoSolve data object...")
     ts_data = make_data(M=features)
     ts_data['information'] = information
     ts_data['efficiency'] = efficiency
@@ -131,7 +131,7 @@ def main():
     
     # Set control parameters for multi-objective optimization
     print("\nSetting control parameters...")
-    control = train_sel_control(
+    control = evolve_control(
         size="free",
         niterations=150,       # Number of iterations
         minitbefstop=50,       # Stop if no improvement for this many iterations
@@ -150,7 +150,7 @@ def main():
     print("\nRunning multi-objective feature selection...")
     start_time = time.time()
     
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=[list(range(n_features))],  # All features are candidates
         setsizes=[n_features // 3],            # Select one-third of features

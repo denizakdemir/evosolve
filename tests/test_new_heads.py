@@ -177,7 +177,7 @@ class TestMultiObjectiveHeads:
     
     def test_graph_w_multiobjective(self):
         """Test GRAPH_W with multi-objective optimization (sparsity vs sum)."""
-        from evosolve.core import train_sel
+        from evosolve.core import evolve
         
         n_nodes = 3
         setsizes = [n_nodes * n_nodes]
@@ -191,7 +191,7 @@ class TestMultiObjectiveHeads:
             edge_sum = float(np.sum(graph))
             return [sparsity, edge_sum]
         
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,
@@ -212,7 +212,7 @@ class TestMultiObjectiveHeads:
     
     def test_graph_u_multiobjective(self):
         """Test GRAPH_U with multi-objective (connectivity vs edges)."""
-        from evosolve.core import train_sel
+        from evosolve.core import evolve
         
         n_nodes = 4
         setsizes = [n_nodes * n_nodes]
@@ -228,7 +228,7 @@ class TestMultiObjectiveHeads:
             connectivity = float(np.sum(np.diag(graph)) + np.sum(graph))
             return [-n_edges, connectivity]  # Minimize edges, maximize connectivity
         
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,
@@ -247,7 +247,7 @@ class TestMultiObjectiveHeads:
     
     def test_spd_multiobjective(self):
         """Test SPD with multi-objective (determinant vs condition number)."""
-        from evosolve.core import train_sel
+        from evosolve.core import evolve
         
         n = 2
         setsizes = [n * n]
@@ -270,7 +270,7 @@ class TestMultiObjectiveHeads:
             
             return [det, -cond]  # Maximize det, minimize cond
         
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,
@@ -292,7 +292,7 @@ class TestMultiObjectiveHeads:
     
     def test_simplex_multiobjective(self):
         """Test SIMPLEX with multi-objective (entropy vs concentration)."""
-        from evosolve.core import train_sel
+        from evosolve.core import evolve
         
         dim = 5
         setsizes = [dim]
@@ -317,7 +317,7 @@ class TestMultiObjectiveHeads:
             
             return [entropy, -max_component]
         
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,
@@ -337,7 +337,7 @@ class TestMultiObjectiveHeads:
     
     def test_partition_multiobjective(self):
         """Test PARTITION with multi-objective (balance vs diversity)."""
-        from evosolve.core import train_sel
+        from evosolve.core import evolve
         
         n_items = 12
         n_groups = 3
@@ -363,7 +363,7 @@ class TestMultiObjectiveHeads:
             
             return [balance, diversity]
         
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,

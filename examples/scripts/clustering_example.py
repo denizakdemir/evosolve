@@ -1,9 +1,9 @@
 """
-Example demonstrating how to use TrainSelPy for clustering problems.
+Example demonstrating how to use EvoSolve for clustering problems.
 
 This example shows how to:
 1. Generate synthetic data with cluster structure
-2. Use TrainSelPy to select representative points from each cluster
+2. Use EvoSolve to select representative points from each cluster
 3. Visualize the results
 """
 
@@ -19,10 +19,10 @@ import os
 # Add the parent directory to sys.path to ensure we find our local package
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default
 )
 
@@ -75,8 +75,8 @@ def cluster_representatives(solution, data):
 
 
 def main():
-    """Run a clustering example using TrainSelPy."""
-    print("TrainSelPy Clustering Example")
+    """Run a clustering example using EvoSolve."""
+    print("EvoSolve Clustering Example")
     print("----------------------------")
     
     # Generate synthetic data with clusters
@@ -100,8 +100,8 @@ def main():
     print("\nComputing distance matrix...")
     dist_mat = euclidean_distances(X)
     
-    # Create the TrainSel data object
-    print("\nCreating TrainSel data object...")
+    # Create the EvoSolve data object
+    print("\nCreating EvoSolve data object...")
     ts_data = make_data(M=X)
     
     # Add distance matrix and cluster labels to the data object
@@ -115,10 +115,10 @@ def main():
     control["npop"] = 100
     
     # Run the selection algorithm to find cluster representatives
-    print("\nRunning TrainSel to find cluster representatives...")
+    print("\nRunning EvoSolve to find cluster representatives...")
     
     # Select one representative per cluster
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=[list(range(n_samples))],  # Select from all samples
         setsizes=[n_clusters],  # Select as many points as clusters
@@ -161,7 +161,7 @@ def main():
         label='Representatives'
     )
     
-    plt.title('Cluster Representatives Selected by TrainSelPy')
+    plt.title('Cluster Representatives Selected by EvoSolve')
     plt.xlabel('Feature 1')
     plt.ylabel('Feature 2')
     plt.legend()
@@ -177,7 +177,7 @@ def main():
     
     for n_reps in n_reps_list:
         print(f"\nSelecting {n_reps} representatives...")
-        result = train_sel(
+        result = evolve(
             data=ts_data,
             candidates=[list(range(n_samples))],
             setsizes=[n_reps],
@@ -245,14 +245,14 @@ def main():
     # Compute distance matrix
     dist_mat_high = euclidean_distances(X_high)
     
-    # Create the TrainSel data object
+    # Create the EvoSolve data object
     ts_data_high = make_data(M=X_high)
     ts_data_high["DistMat"] = dist_mat_high
     ts_data_high["ClusterLabels"] = y_high
     
     # Run the selection algorithm
-    print("\nRunning TrainSel on high-dimensional data...")
-    result_high = train_sel(
+    print("\nRunning EvoSolve on high-dimensional data...")
+    result_high = evolve(
         data=ts_data_high,
         candidates=[list(range(n_samples))],
         setsizes=[n_clusters],

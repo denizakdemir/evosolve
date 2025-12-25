@@ -2,7 +2,7 @@
 Distributional Operators for GA Integration.
 
 This module provides thin wrappers around the distributional head primitives
-to integrate them with TrainSelPy's GA infrastructure.
+to integrate them with EvoSolve's GA infrastructure.
 """
 
 import numpy as np

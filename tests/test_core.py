@@ -1,5 +1,5 @@
 """
-Tests for the core functionality of TrainSelPy.
+Tests for the core functionality of EvoSolve.
 """
 
 import unittest
@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default,
     dopt
 )
@@ -15,7 +15,7 @@ from evosolve import (
 
 class TestCore(unittest.TestCase):
     """
-    Test cases for the core functionality of TrainSelPy.
+    Test cases for the core functionality of EvoSolve.
     """
     
     def setUp(self):
@@ -86,8 +86,8 @@ class TestCore(unittest.TestCase):
         self.assertIn("nelite", control)
         self.assertIn("npop", control)
     
-    def test_train_sel_simple(self):
-        """Test the train_sel function with a simple example."""
+    def test_evolve_simple(self):
+        """Test the evolve function with a simple example."""
         # Create data
         data = make_data(M=self.M)
         data["FeatureMat"] = self.M
@@ -98,7 +98,7 @@ class TestCore(unittest.TestCase):
         control["npop"] = 50
         
         # Run a simple optimization
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(10))],
             setsizes=[5],
@@ -117,8 +117,8 @@ class TestCore(unittest.TestCase):
         self.assertIsNotNone(result.fitness_history)
         self.assertGreater(len(result.fitness_history), 0)
     
-    def test_train_sel_bool(self):
-        """Test the train_sel function with boolean selection."""
+    def test_evolve_bool(self):
+        """Test the evolve function with boolean selection."""
         # Create data
         data = make_data(M=self.M)
         data["FeatureMat"] = self.M
@@ -129,7 +129,7 @@ class TestCore(unittest.TestCase):
         control["npop"] = 50
         
         # Run a boolean optimization
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(20))],
             setsizes=[20],
@@ -147,8 +147,8 @@ class TestCore(unittest.TestCase):
         for val in result.selected_indices[0]:
             self.assertIn(val, [0, 1])
     
-    def test_train_sel_ordered(self):
-        """Test the train_sel function with ordered selection."""
+    def test_evolve_ordered(self):
+        """Test the evolve function with ordered selection."""
         # Create data
         data = make_data(M=self.M)
         data["FeatureMat"] = self.M
@@ -159,7 +159,7 @@ class TestCore(unittest.TestCase):
         control["npop"] = 50
         
         # Run an ordered optimization
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(20))],
             setsizes=[5],

@@ -1,5 +1,5 @@
 """
-Multi-Objective Continuous Variable Portfolio Optimization Example for TrainSelPy.
+Multi-Objective Continuous Variable Portfolio Optimization Example for EvoSolve.
 
 This example demonstrates multi-objective optimization with continuous variables
 for a portfolio allocation problem balancing:
@@ -16,11 +16,11 @@ import time
 import random
 from typing import List, Dict, Any
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data, 
-    train_sel, 
-    train_sel_control
+    evolve, 
+    evolve_control
 )
 
 def generate_asset_data(n_assets=20, random_seed=42):
@@ -175,7 +175,7 @@ def portfolio_objectives(dbl_solution, data):
 def main():
     """Run a multi-objective continuous variable optimization example for portfolio allocation."""
     
-    print("TrainSelPy Multi-Objective Continuous Portfolio Optimization Example")
+    print("EvoSolve Multi-Objective Continuous Portfolio Optimization Example")
     print("------------------------------------------------------------------")
     
     # Generate asset data
@@ -190,14 +190,14 @@ def main():
     for i in range(n_assets):
         print(f"{i:5} | {assets['names'][i]:10} | {assets['sectors'][i]:11} | {assets['returns'][i]:6.2f} | {assets['risks'][i]:4.2f}")
     
-    # Create the TrainSel data object
-    print("\nCreating TrainSel data object...")
+    # Create the EvoSolve data object
+    print("\nCreating EvoSolve data object...")
     ts_data = make_data(M=features)
     ts_data['assets'] = assets
     
     # Set control parameters
     print("\nSetting control parameters...")
-    control = train_sel_control(
+    control = evolve_control(
         size="free",
         niterations=200,      # Increased for better Pareto front
         minitbefstop=100,     # Increased for better convergence
@@ -225,7 +225,7 @@ def main():
     start_time = time.time()
     
     # Single run with multi-objective optimization
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=[list(range(n_assets))],  # Choose from all assets
         setsizes=[n_assets],                 # Weights for each asset

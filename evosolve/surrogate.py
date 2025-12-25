@@ -1,5 +1,5 @@
 """
-Surrogate model implementation for TrainSelPy.
+Surrogate model implementation for EvoSolve.
 """
 
 import numpy as np

@@ -1,5 +1,5 @@
 """
-Sparse Multi-Environment Genomic Trial Design using TrainSelPy
+Sparse Multi-Environment Genomic Trial Design using EvoSolve
 
 This example demonstrates how to design sparse multi-environment genomic selection
 trials where:
@@ -11,7 +11,7 @@ trials where:
 This uses single-stage optimization with custom chromosome encoding to simultaneously
 select check genotypes and allocate test genotypes to environments.
 
-Author: TrainSelPy Development Team
+Author: EvoSolve Development Team
 Date: 2025-11-24
 """
 
@@ -803,7 +803,7 @@ def main():
     """
     print("="*80)
     print("Sparse Multi-Environment Genomic Trial Design")
-    print("Using TrainSelPy with CDMean Criterion")
+    print("Using EvoSolve with CDMean Criterion")
     print("="*80)
     
     # Set parameters

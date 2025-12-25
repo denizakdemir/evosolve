@@ -146,10 +146,10 @@ def main():
     # 5. Result Extraction (Integrated GA Style)
     print("\n5. GA Integration: Result Dataclass")
     print("-" * 70)
-    from evosolve.core import TrainSelResult
+    from evosolve.core import EvoResult
     
-    # Simulate a result coming from train_sel()
-    result = TrainSelResult(
+    # Simulate a result coming from evolve()
+    result = EvoResult(
         selected_indices=particles[0].int_values,
         selected_values=particles[0].dbl_values,
         fitness=exact_mean,
@@ -202,7 +202,7 @@ def main():
     print("✓ Full support for mixed-type ParticleDistributions")
     print("✓ Flexible Objectives: Support both Callables and pre-computed Arrays")
     print("✓ Exact Discrete Evaluation: Noise-free metrics via Array inputs")
-    print("✓ GA-Ready: Integrated into TrainSelResult and Core APIs")
+    print("✓ GA-Ready: Integrated into EvoResult and Core APIs")
     print("✓ NEW: Sampling optimization with copy=False (10-100x speedup)")
     print("✓ NEW: compress_kmeans for diversity-preserving compression")
     print("✓ NEW: Robust input validation (empty, NaN, Inf checks)")

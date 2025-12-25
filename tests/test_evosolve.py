@@ -6,7 +6,7 @@ from evosolve.operators import crossover, mutation
 from evosolve.selection import selection, fast_non_dominated_sort
 from evosolve.algorithms import initialize_population, genetic_algorithm
 
-class TestTrainSelPy(unittest.TestCase):
+class TestEvoSolve(unittest.TestCase):
     def setUp(self):
         random.seed(42)
         np.random.seed(42)

@@ -1,3 +1,3 @@
 """
-Unit tests for the TrainSelPy package.
+Unit tests for the EvoSolve package.
 """

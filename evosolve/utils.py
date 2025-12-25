@@ -1,5 +1,5 @@
 """
-Utility functions for TrainSelPy.
+Utility functions for EvoSolve.
 """
 
 import numpy as np
@@ -163,7 +163,7 @@ def create_mixed_model_data(
     Dict[str, Any]
         Data for mixed model optimization
     """
-    # Create a TrainSel_Data object
+    # Create a EvoSolve_Data object
     data = {}
     
     # Add the genetic relationship matrix
@@ -183,7 +183,7 @@ def create_mixed_model_data(
     
     # Add metadata
     data["Nind"] = G.shape[0]
-    data["class"] = "TrainSel_Data"
+    data["class_name"] = "EvoSolve_Data"
     
     return data
 
@@ -262,7 +262,7 @@ def compute_hypervolume(front: List[List[float]], reference_point: List[float]) 
     # Filter points that do not dominate the reference point
     # We want points that are BETTER than reference point.
     # Assuming maximization? Or minimization?
-    # TrainSelPy usually assumes maximization of fitness.
+    # EvoSolve usually assumes maximization of fitness.
     # So reference point should be SMALLER than all points (e.g. [0, 0])
     # And we calculate volume between point and reference.
     # BUT, hypervolume is usually defined for minimization (volume dominated by front bounded by ref).

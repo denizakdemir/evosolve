@@ -15,10 +15,10 @@ sys.path.insert(0, current_dir)
 # Import the custom CDMean implementation
 from custom_cdmean import custom_cdmean
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data, 
-    train_sel, 
+    evolve, 
     set_control_default,
     dopt
 )
@@ -40,7 +40,7 @@ def create_test_dataset(n_samples=50, n_features=30):
 def main():
     """Run CDMean example with the fixed implementation."""
     
-    print("TrainSelPy CDMean Example (Fixed Implementation)")
+    print("EvoSolve CDMean Example (Fixed Implementation)")
     print("---------------------------------------------")
     
     # Create test dataset
@@ -49,8 +49,8 @@ def main():
     
     print(f"Created dataset with {M.shape[0]} samples and {M.shape[1]} features")
     
-    # Create the TrainSel data object
-    print("\nCreating TrainSel data object...")
+    # Create the EvoSolve data object
+    print("\nCreating EvoSolve data object...")
     ts_data = make_data(K=K)
     ts_data["FeatureMat"] = M  # For D-optimality
     ts_data["G"] = K           # For CDMean
@@ -63,8 +63,8 @@ def main():
     control["npop"] = 100
     
     # Run with fixed CDMean
-    print("\nRunning TrainSel with fixed CDMean criterion...")
-    result = train_sel(
+    print("\nRunning EvoSolve with fixed CDMean criterion...")
+    result = evolve(
         data=ts_data,
         candidates=[list(range(len(M)))],
         setsizes=[10],
@@ -79,8 +79,8 @@ def main():
     print(f"Final fitness (CDMean): {result.fitness:.6f}")
     
     # Run with D-optimality for comparison
-    print("\nRunning TrainSel with D-optimality for comparison...")
-    result_dopt = train_sel(
+    print("\nRunning EvoSolve with D-optimality for comparison...")
+    result_dopt = evolve(
         data=ts_data,
         candidates=[list(range(len(M)))],
         setsizes=[10],

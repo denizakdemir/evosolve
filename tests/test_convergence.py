@@ -1,13 +1,13 @@
 
 import unittest
 import numpy as np
-from evosolve import train_sel, set_control_default, make_data
+from evosolve import evolve, set_control_default, make_data
 
 import random
 
 class TestConvergence(unittest.TestCase):
     """
-    Convergence tests for TrainSelPy.
+    Convergence tests for EvoSolve.
     These tests use simple problems with known optimal solutions to verify
     that the algorithm can recover them.
     """
@@ -43,7 +43,7 @@ class TestConvergence(unittest.TestCase):
             # sol is a list of indices
             return np.sum(data["values"][sol])
 
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(n_items))],
             setsizes=[k],
@@ -78,7 +78,7 @@ class TestConvergence(unittest.TestCase):
         def fitness(sol, data):
             return np.sum(data["values"][sol])
 
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(n_items))],
             setsizes=[k],
@@ -128,7 +128,7 @@ class TestConvergence(unittest.TestCase):
         # if settypes[j] == "BOOL":
         #    sol.int_values.append([random.choice([0, 1]) for _ in range(setsizes[j])])
         
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(n_items))], # Candidates determine the size of the boolean vector
             setsizes=[n_items], # Ignored for BOOL but good practice
@@ -171,7 +171,7 @@ class TestConvergence(unittest.TestCase):
 
         # Optimal fitness is 0
         
-        result = train_sel(
+        result = evolve(
             data={},
             candidates=[[]], # No int candidates
             setsizes=[dim],
@@ -212,7 +212,7 @@ class TestConvergence(unittest.TestCase):
             score = data["values"][idx] - 100 * (val - target_x)**2
             return score
 
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(n_items)), []], # Int candidates, DBL empty
             setsizes=[1, 1], # 1 int, 1 dbl
@@ -257,7 +257,7 @@ class TestConvergence(unittest.TestCase):
         # self.control["solution_diversity"] = True
 
         
-        result = train_sel(
+        result = evolve(
             data={},
             candidates=[[]],
             setsizes=[1],

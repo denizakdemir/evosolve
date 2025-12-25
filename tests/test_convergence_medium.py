@@ -2,12 +2,12 @@
 import unittest
 import numpy as np
 import random
-from evosolve import train_sel, set_control_default
+from evosolve import evolve, set_control_default
 from evosolve.algorithms import knapsack_repair
 
 class TestConvergenceMedium(unittest.TestCase):
     """
-    Medium difficulty convergence tests for TrainSelPy.
+    Medium difficulty convergence tests for EvoSolve.
     These tests target problems known to cause stagnation or premature convergence.
     """
 
@@ -50,7 +50,7 @@ class TestConvergenceMedium(unittest.TestCase):
         control["niterations"] = 2000
         control["npop"] = 1000
 
-        result = train_sel(
+        result = evolve(
             data={},
             candidates=[[]],
             setsizes=[dim],
@@ -90,7 +90,7 @@ class TestConvergenceMedium(unittest.TestCase):
             # We maximize negative fitness
             return -val
 
-        result = train_sel(
+        result = evolve(
             data={},
             candidates=[[]],
             setsizes=[dim],
@@ -147,7 +147,7 @@ class TestConvergenceMedium(unittest.TestCase):
             "capacity": capacity
         }
         
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(n_items))],
             setsizes=[n_items],
@@ -196,7 +196,7 @@ class TestConvergenceMedium(unittest.TestCase):
             f2 = g * (1 - np.sqrt(f1 / g))
             return [f1, f2] # We maximize, so we should return negative?
             # Wait, standard ZDT is minimization.
-            # TrainSelPy maximizes.
+            # EvoSolve maximizes.
             # So we return [-f1, -f2].
             
         def fitness_max(sol_dbl, data):
@@ -211,7 +211,7 @@ class TestConvergenceMedium(unittest.TestCase):
         control["npop"] = 200
         control["npop"] = 200
         
-        result = train_sel(
+        result = evolve(
             data={},
             candidates=[[]],
             setsizes=[dim],
@@ -281,7 +281,7 @@ class TestConvergenceMedium(unittest.TestCase):
         control["npop"] = 200
         control["npop"] = 200
         
-        result = train_sel(
+        result = evolve(
             data={},
             candidates=[list(range(n_assets)), [1.0] * n_select],
             setsizes=[n_select, n_select],
@@ -347,7 +347,7 @@ class TestConvergenceMedium(unittest.TestCase):
         control["npop"] = 200
         control["npop"] = 200
         
-        result = train_sel(
+        result = evolve(
             data={},
             candidates=[list(range(n_projects)), [0.5] * n_projects],
             setsizes=[n_projects, n_projects],
@@ -415,7 +415,7 @@ class TestConvergenceMedium(unittest.TestCase):
         control["npop"] = 300
         control["use_nsga3"] = True  # Use NSGA-III for 3 objectives
         
-        result = train_sel(
+        result = evolve(
             data={},
             candidates=[list(range(n_tasks)), [0.75] * n_tasks],
             setsizes=[n_tasks, n_tasks],

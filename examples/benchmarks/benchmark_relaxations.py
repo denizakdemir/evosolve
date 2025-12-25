@@ -1,6 +1,6 @@
 
 """
-Benchmark for Convex Relaxations in TrainSelPy.
+Benchmark for Convex Relaxations in EvoSolve.
 
 Compares the performance (Time and Solution Quality) of:
 1. Frank-Wolfe (FW) Solver

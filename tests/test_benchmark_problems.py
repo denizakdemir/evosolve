@@ -1,7 +1,7 @@
 """
 Tests for benchmark problems with known solutions.
 
-This module tests the TrainSelPy optimization algorithms against
+This module tests the EvoSolve optimization algorithms against
 benchmark problems where the optimal solution is known.
 """
 
@@ -11,7 +11,7 @@ import pandas as pd
 import time
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default
 )
 
@@ -46,7 +46,7 @@ class TestBenchmarkProblems(unittest.TestCase):
         n = 20
         X = np.eye(n)
         
-        # Create data for TrainSel
+        # Create data for EvoSolve
         data = {"FeatureMat": X}
         
         # Define a modified D-optimality function that's more robust for testing
@@ -68,7 +68,7 @@ class TestBenchmarkProblems(unittest.TestCase):
             return det_val * 100
         
         # Run optimization with random initial solution
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(n))],
             setsizes=[5],
@@ -96,7 +96,7 @@ class TestBenchmarkProblems(unittest.TestCase):
         X_random = np.random.normal(0, 1, size=(n, n))
         Q, _ = np.linalg.qr(X_random)
         
-        # Create data for TrainSel
+        # Create data for EvoSolve
         data = {"FeatureMat": Q}
         
         # Define a function that measures orthogonality
@@ -105,7 +105,7 @@ class TestBenchmarkProblems(unittest.TestCase):
             """
             Score orthogonality (lower is better) by summing squared dot products.
             For perfectly orthogonal vectors, dot products should be zero.
-            We return negative score since TrainSel maximizes.
+            We return negative score since EvoSolve maximizes.
             """
             X = data["FeatureMat"]
             selected = X[:, solution]
@@ -120,7 +120,7 @@ class TestBenchmarkProblems(unittest.TestCase):
             return -dot_products
         
         # Run optimization
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(n))],
             setsizes=[k],
@@ -151,7 +151,7 @@ class TestBenchmarkProblems(unittest.TestCase):
         n = 100
         x = np.linspace(-10, 10, n)
         
-        # Create data for TrainSel
+        # Create data for EvoSolve
         data = {"x": x}
         
         # Define a function that measures variance
@@ -162,7 +162,7 @@ class TestBenchmarkProblems(unittest.TestCase):
             return np.var(selected)
         
         # Run optimization
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(n))],
             setsizes=[10],
@@ -222,11 +222,11 @@ class TestBenchmarkProblems(unittest.TestCase):
             
             return len(covered)
         
-        # Create data for TrainSel
+        # Create data for EvoSolve
         data = {"grid_points": grid_points}
         
         # Run optimization
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(len(grid_points)))],
             setsizes=[16],  # Should be able to cover with 16 points
@@ -287,7 +287,7 @@ class TestBenchmarkProblems(unittest.TestCase):
             else:
                 return total_value
         
-        # Create data for TrainSel
+        # Create data for EvoSolve
         data = {
             "weights": weights,
             "values": values,
@@ -296,7 +296,7 @@ class TestBenchmarkProblems(unittest.TestCase):
         
         # Run optimization with a UOS representation instead of BOOL
         # This tends to be more effective for the knapsack problem
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(n))],
             setsizes=[10],  # Select 10 out of 20 items
@@ -359,11 +359,11 @@ class TestBenchmarkProblems(unittest.TestCase):
             
             return covered_edges
         
-        # Create data for TrainSel
+        # Create data for EvoSolve
         data = {"edges": edges}
         
         # Run optimization for a small vertex cover
-        result = train_sel(
+        result = evolve(
             data=data,
             candidates=[list(range(n))],
             setsizes=[n // 3],  # Try to cover with 1/3 of vertices

@@ -1,5 +1,5 @@
 """
-Example demonstrating multivariate mixed type optimization with TrainSelPy.
+Example demonstrating multivariate mixed type optimization with EvoSolve.
 
 This example shows how to optimize multiple variables of different types simultaneously
 for drug discovery experiment design, focusing on:
@@ -14,10 +14,10 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import time
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default
 )
 
@@ -163,8 +163,8 @@ def dose_optimization_fitness(int_solution, dbl_solution, data):
 
 
 def main():
-    """Run a simplified mixed type optimization example using TrainSelPy."""
-    print("TrainSelPy Mixed Type Optimization Example (Simplified)")
+    """Run a simplified mixed type optimization example using EvoSolve."""
+    print("EvoSolve Mixed Type Optimization Example (Simplified)")
     print("-----------------------------------------------------")
     
     # Generate synthetic data
@@ -179,7 +179,7 @@ def main():
         n_targets=n_targets
     )
     
-    # Create the TrainSel data object
+    # Create the EvoSolve data object
     ts_data = make_data(M=compound_features)
     ts_data["TargetActivities"] = target_activities
     ts_data["CompoundCosts"] = compound_costs
@@ -200,7 +200,7 @@ def main():
     
     # First run - find the best compounds
     print("Phase 1: Selecting optimal compounds...")
-    result_phase1 = train_sel(
+    result_phase1 = evolve(
         data=ts_data,
         candidates=[
             list(range(n_compounds)),  # Candidate compounds (UOS)
@@ -299,7 +299,7 @@ def main():
     # 2. Actual dosage levels chosen by optimization
     plt.subplot(3, 1, 2)
     plt.bar(range(len(selected_compounds)), dosage_levels, color='blue', alpha=0.7, label='Selected Dose')
-    plt.title('Optimal Dosage Levels Selected by TrainSelPy')
+    plt.title('Optimal Dosage Levels Selected by EvoSolve')
     plt.xlabel('Compound')
     plt.ylabel('Dosage Level')
     plt.xticks(range(len(selected_compounds)), selected_compounds)

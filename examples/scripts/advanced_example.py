@@ -1,5 +1,5 @@
 """
-Advanced example of using the TrainSelPy package with optimization criteria.
+Advanced example of using the EvoSolve package with optimization criteria.
 """
 
 import numpy as np
@@ -12,11 +12,11 @@ import os
 # Add the parent directory to sys.path to ensure we find our fixes
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data, 
-    train_sel, 
-    train_sel_control,
+    evolve, 
+    evolve_control,
     set_control_default,
     dopt, 
     maximin_opt
@@ -52,9 +52,9 @@ def custom_multi_objective(solution, data):
     return 0.7 * cdmean_value + 0.3 * (dopt_value / 100)  # Scale down D-optimality
 
 def main():
-    """Run an advanced example of TrainSelPy."""
+    """Run an advanced example of EvoSolve."""
     
-    print("TrainSelPy Advanced Example (Fixed)")
+    print("EvoSolve Advanced Example (Fixed)")
     print("--------------------------------")
     
     # Load wheat data
@@ -65,21 +65,21 @@ def main():
     
     print(f"Data dimensions: {M.shape[0]} lines, {M.shape[1]} markers")
     
-    # Create the TrainSel data object
-    print("\nCreating TrainSel data object...")
+    # Create the EvoSolve data object
+    print("\nCreating EvoSolve data object...")
     ts_data = make_data(K=K)
     ts_data["FeatureMat"] = M  # For D-optimality
     ts_data["G"] = K           # For CDMean
     ts_data["lambda"] = 0.01   # For CDMean
     
     # Run the selection algorithm with custom optimization criterion
-    print("\nRunning TrainSel with custom multi-objective criterion...")
+    print("\nRunning EvoSolve with custom multi-objective criterion...")
     control = set_control_default()
     control["niterations"] = 50
     control["npop"] = 200
     
     start_time = time.time()
-    result_custom = train_sel(
+    result_custom = evolve(
         data=ts_data,
         candidates=[list(range(400))],  # Select from first 400 lines
         setsizes=[40],                 # Select 40 lines
@@ -106,7 +106,7 @@ def main():
     print("\n\nComparing different selection types...")
     
     # Run with Unordered Set type (UOS)
-    result_uos = train_sel(
+    result_uos = evolve(
         data=ts_data,
         candidates=[list(range(400))],
         setsizes=[20],
@@ -117,7 +117,7 @@ def main():
     )
     
     # Run with Ordered Set type (OS)
-    result_os = train_sel(
+    result_os = evolve(
         data=ts_data,
         candidates=[list(range(400))],
         setsizes=[20],
@@ -144,7 +144,7 @@ def main():
         return total_dopt / len(sets)
     
     # Run the optimization with multiple sets
-    result_multi = train_sel(
+    result_multi = evolve(
         data=ts_data,
         candidates=[list(range(200)), list(range(200, 400))],  # Two candidate sets
         setsizes=[15, 15],                                   # Select 15 from each
@@ -174,8 +174,8 @@ def main():
         plt.xlabel('PC1')
         plt.ylabel('PC2')
         plt.tight_layout()
-        plt.savefig('trainsel_advanced_selection.png')
-        print("\nSelection plot saved as 'trainsel_advanced_selection.png'")
+        plt.savefig('evosolve_advanced_selection.png')
+        print("\nSelection plot saved as 'evosolve_advanced_selection.png'")
         
         # Plot multi-set selection
         plt.figure(figsize=(12, 6))
@@ -199,8 +199,8 @@ def main():
         plt.ylabel('PC2')
         
         plt.tight_layout()
-        plt.savefig('trainsel_multiset_selection.png')
-        print("Multi-set selection plot saved as 'trainsel_multiset_selection.png'")
+        plt.savefig('evosolve_multiset_selection.png')
+        print("Multi-set selection plot saved as 'evosolve_multiset_selection.png'")
     except Exception as e:
         print(f"\nCould not create visualization: {str(e)}")
     

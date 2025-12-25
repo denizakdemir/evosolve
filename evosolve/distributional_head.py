@@ -1,5 +1,5 @@
 """
-Distributional Optimization Head for TrainSelPy.
+Distributional Optimization Head for EvoSolve.
 
 This module implements distributional optimization where the search operates
 over distributions of solutions rather than individual solutions.
@@ -287,7 +287,7 @@ def evaluate_particle_objectives(
         data = {}
 
     def _call_base_fitness(sol: Solution) -> Any:
-        """Align call signature with TrainSel convention (data last)."""
+        """Align call signature with EvoSolve convention (data last)."""
         has_int = bool(sol.int_values)
         has_dbl = bool(sol.dbl_values)
         if has_int and has_dbl:

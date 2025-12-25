@@ -1,5 +1,5 @@
 """
-Verification script for TrainSelPy advanced features.
+Verification script for EvoSolve advanced features.
 """
 
 import numpy as np

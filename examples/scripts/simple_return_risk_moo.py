@@ -1,5 +1,5 @@
 """
-Simple Return-Risk Multi-Objective Portfolio Optimization Example for TrainSelPy.
+Simple Return-Risk Multi-Objective Portfolio Optimization Example for EvoSolve.
 
 This example demonstrates a classic Markowitz portfolio optimization with just two objectives:
 1. Maximize expected return
@@ -12,11 +12,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data, 
-    train_sel, 
-    train_sel_control
+    evolve, 
+    evolve_control
 )
 
 def generate_asset_data(n_assets=10, random_seed=42):
@@ -106,7 +106,7 @@ def return_risk_objectives(dbl_solution, data):
 def main():
     """Run a simple return-risk multi-objective portfolio optimization."""
     
-    print("TrainSelPy Simple Return-Risk Portfolio Optimization Example")
+    print("EvoSolve Simple Return-Risk Portfolio Optimization Example")
     print("----------------------------------------------------------")
     
     # Generate asset data
@@ -128,7 +128,7 @@ def main():
     
     # Set control parameters
     print("\nSetting control parameters...")
-    control = train_sel_control(
+    control = evolve_control(
         size="free",
         niterations=50,       # Number of iterations (reduced for speed)
         minitbefstop=20,      # Minimum iterations before stopping
@@ -152,7 +152,7 @@ def main():
     all_results = []
     
     # 1. Balanced optimization (equal weight on return and risk)
-    result1 = train_sel(
+    result1 = evolve(
         data=ts_data,
         candidates=[list(range(n_assets))],  # Choose from all assets
         setsizes=[n_assets],                 # Weights for each asset
@@ -169,7 +169,7 @@ def main():
         base = return_risk_objectives(dbl_solution, data)
         return [base[0] * 5.0, base[1] * 0.2]
     
-    result2 = train_sel(
+    result2 = evolve(
         data=ts_data,
         candidates=[list(range(n_assets))],
         setsizes=[n_assets],
@@ -186,7 +186,7 @@ def main():
         base = return_risk_objectives(dbl_solution, data)
         return [base[0] * 0.2, base[1] * 5.0]
     
-    result3 = train_sel(
+    result3 = evolve(
         data=ts_data,
         candidates=[list(range(n_assets))],
         setsizes=[n_assets],
@@ -203,7 +203,7 @@ def main():
         base = return_risk_objectives(dbl_solution, data)
         return [base[0] * 2.0, base[1] * 0.8]
     
-    result4 = train_sel(
+    result4 = evolve(
         data=ts_data,
         candidates=[list(range(n_assets))],
         setsizes=[n_assets],
@@ -220,7 +220,7 @@ def main():
         base = return_risk_objectives(dbl_solution, data)
         return [base[0] * 0.8, base[1] * 2.0]
     
-    result5 = train_sel(
+    result5 = evolve(
         data=ts_data,
         candidates=[list(range(n_assets))],
         setsizes=[n_assets],
@@ -237,7 +237,7 @@ def main():
         base = return_risk_objectives(dbl_solution, data)
         return [base[0] * 10.0, base[1] * 0.1]
     
-    result6 = train_sel(
+    result6 = evolve(
         data=ts_data,
         candidates=[list(range(n_assets))],
         setsizes=[n_assets],
@@ -254,7 +254,7 @@ def main():
         base = return_risk_objectives(dbl_solution, data)
         return [base[0] * 0.1, base[1] * 10.0]
     
-    result7 = train_sel(
+    result7 = evolve(
         data=ts_data,
         candidates=[list(range(n_assets))],
         setsizes=[n_assets],

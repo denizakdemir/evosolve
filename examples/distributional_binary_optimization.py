@@ -27,7 +27,7 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from evosolve import train_sel, train_sel_control
+from evosolve import evolve, evolve_control
 from evosolve.core import get_distributional_preset  # NEW: Quick-start presets
 
 
@@ -52,7 +52,7 @@ def run_standard_ga():
     print("STANDARD GA (individual solutions)")
     print("=" * 70)
     
-    control = train_sel_control(
+    control = evolve_control(
         niterations=50,
         npop=100,
         progress=True,
@@ -61,7 +61,7 @@ def run_standard_ga():
         crossprob=0.8
     )
     
-    result = train_sel(
+    result = evolve(
         candidates=[list(range(20))],
         setsizes=[20],
         settypes=["BOOL"],
@@ -106,7 +106,7 @@ def run_distributional_ga():
           f"tau={preset_config.get('dist_tau', 'N/A')}")
 
     # Create distributional control parameters
-    control = train_sel_control(
+    control = evolve_control(
         niterations=50,
         npop=50,  # Population of distributions
         progress=True,
@@ -117,7 +117,7 @@ def run_distributional_ga():
         **preset_config
     )
     
-    result = train_sel(
+    result = evolve(
         candidates=[list(range(20))],  # 20 binary variables
         setsizes=[20],
         settypes=["DIST:BOOL"],  # Distributional head wrapping BOOL!
@@ -167,7 +167,7 @@ def run_distributional_multiobjective():
     print("=" * 70)
 
     # Use entropy objective with NSGA means mode
-    control = train_sel_control(
+    control = evolve_control(
         niterations=50,
         npop=50,
         progress=True,
@@ -184,7 +184,7 @@ def run_distributional_multiobjective():
         dist_maximize=True
     )
 
-    result = train_sel(
+    result = evolve(
         candidates=[list(range(20))],
         setsizes=[20],
         settypes=["DIST:BOOL"],
@@ -218,13 +218,13 @@ def demonstrate_validation():
     # Example 1: Incompatible CMA-ES + Distributional
     print("\n1. Testing CMA-ES + Distributional compatibility check...")
     try:
-        control = train_sel_control(
+        control = evolve_control(
             niterations=5,
             use_cma_es=True,  # This is incompatible with distributional
             dist_K_particles=10,
             progress=False
         )
-        result = train_sel(
+        result = evolve(
             candidates=[list(range(10))],
             setsizes=[10],
             settypes=["DIST:BOOL"],
@@ -239,7 +239,7 @@ def demonstrate_validation():
     print("\n2. Testing mixed schema validation...")
     try:
         from evosolve.distributional_operators import initialize_distributional_population
-        control = train_sel_control(dist_K_particles=3)
+        control = evolve_control(dist_K_particles=3)
         pop = initialize_distributional_population(
             candidates=[list(range(10)), list(range(5))],
             setsizes=[5, 3],

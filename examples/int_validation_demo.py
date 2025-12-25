@@ -2,7 +2,7 @@
 INT Type Validation Example
 
 This script demonstrates and validates the INT (integer-valued variables) type
-implementation in TrainSelPy, including:
+implementation in EvoSolve, including:
 1. Basic initialization and operators (mutation, crossover)
 2. Simple optimization without neural networks
 3. Neural network integration (VAE/GAN)
@@ -10,12 +10,12 @@ implementation in TrainSelPy, including:
 """
 
 import numpy as np
-from evosolve import train_sel, train_sel_control
+from evosolve import evolve, evolve_control
 from evosolve.algorithms import initialize_population
 from evosolve.operators import mutation, crossover
 
 print("="*70)
-print("INT Type Validation for TrainSelPy")
+print("INT Type Validation for EvoSolve")
 print("="*70)
 
 # ============================================================================
@@ -64,7 +64,7 @@ def target_fitness(int_vals, data):
     """Higher fitness = closer to target"""
     return -np.sum((int_vals - data['target']) ** 2)
 
-control = train_sel_control(
+control = evolve_control(
     niterations=30,
     npop=50,
     progress=False,
@@ -72,7 +72,7 @@ control = train_sel_control(
     use_gan=False
 )
 
-result = train_sel(
+result = evolve(
     candidates=[[0, 100]],
     setsizes=[10],
     settypes=["INT"],
@@ -98,7 +98,7 @@ print("-" * 70)
 try:
     import torch
     
-    control_vae = train_sel_control(
+    control_vae = evolve_control(
         niterations=40,
         npop=80,
         progress=False,
@@ -109,7 +109,7 @@ try:
         nn_epochs=3
     )
 
-    result_vae = train_sel(
+    result_vae = evolve(
         candidates=[[0, 100]],
         setsizes=[10],
         settypes=["INT"],
@@ -149,13 +149,13 @@ def mixed_fitness(int_vals_list, dbl_vals, data):
     
     return int_score + bool_score + dbl_score
 
-control_mixed = train_sel_control(
+control_mixed = evolve_control(
     niterations=30,
     npop=60,
     progress=False
 )
 
-result_mixed = train_sel(
+result_mixed = evolve(
     candidates=[[0, 50], list(range(5)), []],  # INT bounds, BOOL candidates, DBL
     setsizes=[5, 5, 3],  # 5 ints, 5 bools, 3 doubles
     settypes=["INT", "BOOL", "DBL"],
@@ -183,13 +183,13 @@ def centered_fitness(int_vals, data):
     """Optimize towards zero (center of range)"""
     return -np.sum(int_vals ** 2)
 
-control_neg = train_sel_control(
+control_neg = evolve_control(
     niterations=25,
     npop=40,
     progress=False
 )
 
-result_neg = train_sel(
+result_neg = evolve(
     candidates=[[-50, 50]],  # Range from -50 to 50
     setsizes=[8],
     settypes=["INT"],

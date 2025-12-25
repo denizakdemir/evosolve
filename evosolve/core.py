@@ -1,5 +1,5 @@
 """
-Core module implementing the main functionality of TrainSelPy.
+Core module implementing the main functionality of EvoSolve.
 """
 
 import numpy as np
@@ -21,7 +21,7 @@ from evosolve.algorithms import (
 )
 
 
-class TrainSelData(TypedDict, total=False):
+class EvoData(TypedDict, total=False):
     G: Union[np.ndarray, pd.DataFrame]
     R: Union[np.ndarray, pd.DataFrame]
     lambda_val: float
@@ -32,6 +32,7 @@ class TrainSelData(TypedDict, total=False):
     L: Optional[Union[np.ndarray, pd.DataFrame]]
     G_L: Optional[np.ndarray]
     L_G_L_diag: Optional[np.ndarray]
+
 
 
 class ControlParams(TypedDict, total=False):
@@ -103,9 +104,9 @@ def make_data(
     lambda_val: Optional[float] = None,
     X: Optional[np.ndarray] = None,
     L: Optional[Union[np.ndarray, pd.DataFrame]] = None
-) -> TrainSelData:
+) -> EvoData:
     """
-    Create a data structure for TrainSel optimization.
+    Create a data structure for EvoSolve optimization.
     
     Parameters
     ----------
@@ -131,7 +132,7 @@ def make_data(
     Returns
     -------
     Dict[str, Any]
-        Data structure for TrainSel optimization.
+        Data structure for EvoSolve optimization.
     """
     if M is None and K is None:
         raise ValueError("At least one of M (features) or K (similarity matrix) must be provided.")
@@ -200,16 +201,14 @@ def make_data(
             'names': big_K.index
         })
     
-    result: TrainSelData = {
+    result: EvoData = {
         'G': big_K,
         'R': big_R,
-        # Keep both keys for backward compatibility with older
-        # optimization_criteria implementations and existing tests.
         'lambda_val': lambda_val,
         'lambda': lambda_val,
         'labels': labels,
         'Nind': K.shape[0],
-        'class_name': "TrainSel_Data"
+        'class_name': "EvoSolve_Data"
     }
     
     if X is not None:
@@ -239,7 +238,7 @@ def make_data(
     return result
 
 
-def train_sel_control(
+def evolve_control(
     size: str = "free",
     niterations: int = 2000,
     minitbefstop: int = 500,
@@ -305,7 +304,7 @@ def train_sel_control(
     dist_use_nsga_means: bool = False,
 ) -> ControlParams:
     """
-    Create a control object for the TrainSel function.
+    Create a control object for the EvoSolve function.
     
     Parameters
     ----------
@@ -425,7 +424,7 @@ def train_sel_control(
     Returns
     -------
     Dict[str, Any]
-        Control object for the TrainSel function.
+        Control object for the EvoSolve function.
     """
     control: ControlParams = {
         "size": size,
@@ -658,7 +657,7 @@ def get_distributional_preset(preset_name: str, **overrides) -> dict:
     Returns
     -------
     dict
-        Configuration parameters suitable for train_sel_control(**config)
+        Configuration parameters suitable for evolve_control(**config)
 
     Examples
     --------
@@ -668,9 +667,9 @@ def get_distributional_preset(preset_name: str, **overrides) -> dict:
 
     >>> # Use risk-averse preset
     >>> config = get_distributional_preset("risk_averse")
-    >>> result = train_sel(stat=fitness_fn, candidates=...,
+    >>> result = evolve(stat=fitness_fn, candidates=...,
     ...                    settypes=["DIST:BOOL"],
-    ...                    control=train_sel_control(**config))
+    ...                    control=evolve_control(**config))
     """
     if preset_name not in DISTRIBUTIONAL_PRESETS:
         available = ", ".join(DISTRIBUTIONAL_PRESETS.keys())
@@ -690,7 +689,7 @@ def get_distributional_preset(preset_name: str, **overrides) -> dict:
 
 def set_control_default(size: str = "free", **kwargs) -> ControlParams:
     """
-    Set default parameters for the TrainSel control object.
+    Set default parameters for the EvoSolve control object.
     
     Parameters
     ----------
@@ -728,16 +727,16 @@ def set_control_default(size: str = "free", **kwargs) -> ControlParams:
     # Update defaults with provided kwargs, allowing user to override defaults
     defaults.update(kwargs)
 
-    return train_sel_control(
+    return evolve_control(
         size=size,
         **defaults
     )
 
 
 @dataclass
-class TrainSelResult:
+class EvoResult:
     """
-    Class to hold the results of the TrainSel optimization.
+    Class to hold the results of the EvoSolve optimization.
     """
     selected_indices: List[List[int]]  # Selected indices for each set.
     selected_values: List[Any]         # Selected values for each set.
@@ -752,8 +751,8 @@ class TrainSelResult:
     particle_weights: Optional[np.ndarray] = None  # Particle weights
 
 
-def train_sel(
-    data: Optional[TrainSelData] = None,
+def evolve(
+    data: Optional[EvoData] = None,
     candidates: Optional[List[List[int]]] = None,
     setsizes: Optional[List[int]] = None,
     ntotal: Optional[int] = None,
@@ -766,14 +765,14 @@ def train_sel(
     packages: List[str] = [],
     n_jobs: int = 1,
     verbose: bool = True
-) -> TrainSelResult:
+) -> EvoResult:
     """
     Optimize the selection of training populations.
     
     Parameters
     ----------
-    data : Dict[str, Any], optional
-        Data structure for TrainSel optimization.
+    data : EvoData, optional
+        Data structure for EvoSolve optimization.
     candidates : List[List[int]], optional
         List of candidate index sets.
     setsizes : List[int], optional
@@ -789,7 +788,7 @@ def train_sel(
     target : List[int], optional
         List of target indices.
     control : Dict[str, Any], optional
-        Control object for the TrainSel function.
+        Control object for the EvoSolve function.
     init_sol : Dict[str, Any], optional
         Initial solution.
     packages : List[str], optional
@@ -803,11 +802,11 @@ def train_sel(
         
     Returns
     -------
-    TrainSelResult
+    EvoSolveResult
         Results of the optimization.
     """
     if verbose:
-        print("Starting TrainSelPy optimization")
+        print("Starting EvoSolve optimization")
     
     start_time = time.time()
     
@@ -945,7 +944,7 @@ def train_sel(
     
     execution_time = time.time() - start_time
     
-    sel_result = TrainSelResult(
+    sel_result = EvoResult(
         selected_indices=result["selected_indices"],
         selected_values=result["selected_values"],
         fitness=result["fitness"],
@@ -983,7 +982,7 @@ def time_estimation(
     niter : int, optional
         Number of iterations.
     control : Dict[str, Any], optional
-        Control object for the TrainSel function.
+        Control object for the EvoSolve function.
         
     Returns
     -------

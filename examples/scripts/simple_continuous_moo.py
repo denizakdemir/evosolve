@@ -1,5 +1,5 @@
 """
-Simple Multi-Objective Continuous Variable Optimization Example for TrainSelPy.
+Simple Multi-Objective Continuous Variable Optimization Example for EvoSolve.
 
 This example demonstrates a simplified optimization problem with continuous
 variables and three clearly conflicting objectives, designed to produce a
@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import time
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data, 
-    train_sel, 
-    train_sel_control
+    evolve, 
+    evolve_control
 )
 
 def simple_moo_objectives(weights, data):
@@ -63,7 +63,7 @@ def simple_moo_objectives(weights, data):
 def main():
     """Run a simple multi-objective continuous variable optimization example."""
     
-    print("TrainSelPy Simple Multi-Objective Continuous Optimization Example")
+    print("EvoSolve Simple Multi-Objective Continuous Optimization Example")
     print("---------------------------------------------------------------")
     
     # Number of variables to optimize
@@ -75,7 +75,7 @@ def main():
     
     # Set control parameters for multi-objective optimization
     print("\nSetting control parameters...")
-    control = train_sel_control(
+    control = evolve_control(
         size="free",
         niterations=200,      # Number of iterations
         minitbefstop=50,      # Minimum iterations before stopping
@@ -96,7 +96,7 @@ def main():
     print("\nRunning optimization...")
     start_time = time.time()
     
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=[list(range(n_vars))],  # Indices for continuous variables
         setsizes=[n_vars],                 # Number of variables

@@ -8,7 +8,7 @@ import time
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from evosolve.core import train_sel
+from evosolve.core import evolve
 from evosolve.optimization_criteria import cdmean_opt
 
 # Create a test problem
@@ -33,7 +33,7 @@ setsizes = [k]
 settypes = ['UOS']
 
 print("=" * 70)
-print("TrainSelPy Performance Benchmark")
+print("EvoSolve Performance Benchmark")
 print("=" * 70)
 print(f"Problem size: n={n}, k={k}")
 print(f"Population: 200, Generations: 50")
@@ -51,7 +51,7 @@ control_new = {
 }
 
 start = time.time()
-result_new = train_sel(
+result_new = evolve(
     data=data,
     candidates=candidates,
     setsizes=setsizes,
@@ -78,7 +78,7 @@ control_old = {
 }
 
 start = time.time()
-result_old = train_sel(
+result_old = evolve(
     data=data,
     candidates=candidates,
     setsizes=setsizes,
@@ -104,7 +104,7 @@ control_ga_only = {
 }
 
 start = time.time()
-result_ga = train_sel(
+result_ga = evolve(
     data=data,
     candidates=candidates,
     setsizes=setsizes,

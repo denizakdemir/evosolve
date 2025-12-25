@@ -1,16 +1,16 @@
-""" Minimal working example for TrainSelPy. """
+""" Minimal working example for EvoSolve. """
 import numpy as np
 import pandas as pd
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default,
     dopt
 )
 
 def main():
-    """Run a minimal working example of TrainSelPy."""
-    print("TrainSelPy Simple Example")
+    """Run a minimal working example of EvoSolve."""
+    print("EvoSolve Simple Example")
     print("-----------------------")
 
     # Create a small test dataset
@@ -28,8 +28,8 @@ def main():
 
     print(f"Created dataset with {n_samples} samples and {n_features} features")
 
-    # Create the TrainSel data object
-    print("\nCreating TrainSel data object...")
+    # Create the EvoSolve data object
+    print("\nCreating EvoSolve data object...")
     ts_data = make_data(M=M)
     # For D-optimality
     ts_data["FeatureMat"] = M
@@ -43,8 +43,8 @@ def main():
     control["npop"] = 100
 
     # Run the selection algorithm with D-optimality
-    print("\nRunning TrainSel with D-optimality criterion...")
-    result = train_sel(
+    print("\nRunning EvoSolve with D-optimality criterion...")
+    result = evolve(
         data=ts_data,
         candidates=[list(range(n_samples))],  # Select from all samples
         setsizes=[10],  # Select 10 samples

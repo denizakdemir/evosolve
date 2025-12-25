@@ -16,8 +16,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Tuple
 
-from evosolve import train_sel, train_sel_control
-from evosolve.core import TrainSelResult
+from evosolve import evolve, evolve_control
+from evosolve.core import EvoResult
 
 
 def make_breeding_data(n_animals: int = 40, kinship_strength: float = 0.25, seed: int = 7):
@@ -51,7 +51,7 @@ def compute_objectives(selection: np.ndarray, data: dict) -> Tuple[float, float]
 
 
 def parse_selection(int_vals, n_animals: int = None) -> np.ndarray:
-    """Convert TrainSel int_vals payload into a 1D integer selection array."""
+    """Convert EvoSolve int_vals payload into a 1D integer selection array."""
     base = int_vals[0] if isinstance(int_vals, (list, tuple)) else int_vals
     selection = np.array(base, dtype=int).ravel()
     if selection.ndim == 0:
@@ -82,9 +82,9 @@ def make_scalarized_stat(weight_bv: float):
     return _stat
 
 
-def run_standard_ga(data: dict, select_k: int, n_animals: int) -> TrainSelResult:
+def run_standard_ga(data: dict, select_k: int, n_animals: int) -> EvoResult:
     """Run standard multi-objective GA to get Pareto set."""
-    control = train_sel_control(
+    control = evolve_control(
         niterations=100,
         npop=350,
         nelite=140,
@@ -97,7 +97,7 @@ def run_standard_ga(data: dict, select_k: int, n_animals: int) -> TrainSelResult
         niterIslands=50,
     )
 
-    return train_sel(
+    return evolve(
         candidates=[list(range(n_animals))],
         setsizes=[select_k],
         settypes=["UOS"],
@@ -115,10 +115,10 @@ def run_distributional_ga_multiobjective(data: dict, select_k: int, n_animals: i
 
     Returns
     -------
-    TrainSelResult
+    EvoResult
         Contains pareto_front with aggregated objectives per distribution.
     """
-    control = train_sel_control(
+    control = evolve_control(
         niterations=200,
         npop=300,
         nelite=100,
@@ -145,7 +145,7 @@ def run_distributional_ga_multiobjective(data: dict, select_k: int, n_animals: i
         dist_use_nsga_means=True,
     )
 
-    return train_sel(
+    return evolve(
         candidates=[list(range(n_animals))],
         setsizes=[select_k],
         settypes=["DIST:UOS"],
@@ -173,7 +173,7 @@ def pareto_filter(points: List[Tuple[float, float]]) -> List[Tuple[float, float]
     return kept
 
 
-def extract_particle_objectives(dist_result: TrainSelResult, data: dict, n_animals: int) -> List[Tuple[float, float]]:
+def extract_particle_objectives(dist_result: EvoResult, data: dict, n_animals: int) -> List[Tuple[float, float]]:
     """
     Pull particle-level objectives from distributional Pareto solutions.
 
@@ -195,7 +195,7 @@ def extract_particle_objectives(dist_result: TrainSelResult, data: dict, n_anima
     return points
 
 
-def sample_distribution_objectives(dist_result: TrainSelResult, data: dict, n_animals: int, per_dist_samples: int = 100) -> List[Tuple[float, float]]:
+def sample_distribution_objectives(dist_result: EvoResult, data: dict, n_animals: int, per_dist_samples: int = 100) -> List[Tuple[float, float]]:
     """
     Monte Carlo sample objectives from each Pareto distribution for visualization.
 
@@ -230,7 +230,7 @@ def sample_distribution_objectives(dist_result: TrainSelResult, data: dict, n_an
 
 
 def sample_distribution_solutions(
-    dist_result: TrainSelResult,
+    dist_result: EvoResult,
     data: dict,
     n_animals: int,
     per_dist_samples: int = 10,

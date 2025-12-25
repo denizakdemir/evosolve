@@ -93,21 +93,21 @@ pip install seaborn
 
 ```python
 import numpy as np
-from evosolve import make_data, train_sel, set_control_default
+from evosolve import make_data, evolve, set_control_default
 
 # Load example data
 from evosolve.data import wheat_data
 
 # Create the EvoSolve data object
-ts_data = make_data(M=wheat_data["M"])
+evo_data = make_data(M=wheat_data["M"])
 
 # Set control parameters
 control = set_control_default()
 control["niterations"] = 10
 
 # Run the selection algorithm
-result = train_sel(
-    data=ts_data,
+result = evolve(
+    data=evo_data,
     candidates=[list(range(200))],  # Select from first 200 lines
     setsizes=[50],                  # Select 50 lines
     settypes=["UOS"],              # Unordered set
@@ -127,11 +127,11 @@ print("Fitness value:", result.fitness)
 from evosolve import dopt
 
 # Add feature matrix to data
-ts_data["FeatureMat"] = wheat_data["M"]
+evo_data["FeatureMat"] = wheat_data["M"]
 
 # Run with D-optimality criterion
-result = train_sel(
-    data=ts_data,
+result = evolve(
+    data=evo_data,
     candidates=[list(range(200))],
     setsizes=[50],
     settypes=["UOS"],
@@ -144,7 +144,7 @@ result = train_sel(
 
 ```python
 # Set control parameters for parallel processing
-control = train_sel_control(
+control = evolve_control(
     size="demo",
     niterations=50,
     npop=200,
@@ -154,8 +154,8 @@ control = train_sel_control(
 )
 
 # Run with parallel processing
-result = train_sel(
-    data=ts_data,
+result = evolve(
+    data=evo_data,
     candidates=[list(range(200))],
     setsizes=[50],
     settypes=["UOS"],
@@ -177,14 +177,14 @@ def multi_objective(solution, data):
     return [cdmean_value, dopt_value]
 
 # Run with multi-objective optimization and ensure diverse solutions
-control = train_sel_control(
+control = evolve_control(
     niterations=100,
     npop=500,
     solution_diversity=True  # Ensure unique solutions on Pareto front
 )
 
-result = train_sel(
-    data=ts_data,
+result = evolve(
+    data=evo_data,
     candidates=[list(range(200))],
     setsizes=[50],
     settypes=["UOS"],
@@ -216,8 +216,8 @@ def custom_fitness(int_solutions, data):
     return some_fitness_measure(set1, set2, data)
 
 # Run with multiple sets
-result = train_sel(
-    data=ts_data,
+result = evolve(
+    data=evo_data,
     candidates=[list(range(100)), list(range(100, 200))],  # Two candidate sets
     setsizes=[30, 20],                     # Different sizes
     settypes=["UOS", "OS"],               # Different types
@@ -242,12 +242,12 @@ def causal_fitness(dbl_vals, data):
     # (see examples/universal_optimization_demo.py for full implementation)
     return -dag_loss(W, noise_vars, data)
 
-result = train_sel(
+result = evolve(
     candidates=[list(range(5))] * 2,  # 5 nodes
     setsizes=[25, 5],                  # 5×5 graph + 5 noise vars
     settypes=["GRAPH_W", "DBL"],
     stat=causal_fitness,
-    control=train_sel_control(npop=50, niterations=20, use_vae=True)
+    control=evolve_control(npop=50, niterations=20, use_vae=True)
 )
 ```
 
@@ -265,12 +265,12 @@ def metric_fitness(mask, flat_spd, data):
     # ... compute between/within scatter matrices ...
     return fisher_ratio(M, X_masked, data['y'])
 
-result = train_sel(
+result = evolve(
     candidates=[list(range(n_features)), []],
     setsizes=[n_features, n_features * n_features],
     settypes=["BOOL", "SPD"],
     stat=metric_fitness,
-    control=train_sel_control(npop=30, niterations=10)
+    control=evolve_control(npop=30, niterations=10)
 )
 ```
 
@@ -289,12 +289,12 @@ def portfolio_fitness(partition, weights, data):
     
     return sharpe - cluster_balance
 
-result = train_sel(
+result = evolve(
     candidates=[list(range(n_clusters)), []],
     setsizes=[n_assets, n_assets],
     settypes=["PARTITION", "SIMPLEX"],  # Clustering + Weights
     stat=portfolio_fitness,
-    control=train_sel_control(npop=50, niterations=15)
+    control=evolve_control(npop=50, niterations=15)
 )
 ```
 

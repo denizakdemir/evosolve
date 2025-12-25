@@ -1,8 +1,8 @@
 """
-Example demonstrating hyperparameter tuning and model architecture search with TrainSelPy.
+Example demonstrating hyperparameter tuning and model architecture search with EvoSolve.
 
 This example uses the Breast Cancer Wisconsin (Diagnostic) dataset to optimize 
-a Multi-Layer Perceptron (MLP) classifier. It demonstrates how to use TrainSelPy
+a Multi-Layer Perceptron (MLP) classifier. It demonstrates how to use EvoSolve
 to simultaneously select:
 1. Model Architecture (Discrete choice)
 2. Activation Function (Discrete choice)
@@ -21,10 +21,10 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.exceptions import ConvergenceWarning
 import warnings
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default
 )
 
@@ -81,7 +81,7 @@ def fitness_function(int_solution_arch, int_solution_act, dbl_solution_alpha, db
     Returns:
     - Mean Cross-Validation Accuracy
     """
-    # Handle list wrapping (TrainSelPy might pass lists even for single items)
+    # Handle list wrapping (EvoSolve might pass lists even for single items)
     # Also handle numpy arrays if present
     def extract_scalar(val):
         if isinstance(val, list):
@@ -116,11 +116,11 @@ def fitness_function(int_solution_arch, int_solution_act, dbl_solution_alpha, db
     
     return np.mean(scores)
 
-# Wrapper for TrainSelPy which expects specific signature based on settypes
+# Wrapper for EvoSolve which expects specific signature based on settypes
 def fitness_wrapper(int_sols, dbl_sols, data):
     """
     Wrapper to unpack the solutions correctly.
-    TrainSelPy passes:
+    EvoSolve passes:
     - int_sols: list of integer solutions (one per 'UOS'/'OS' set)
     - dbl_sols: list of double solutions (one per 'DBL' set)
     """
@@ -131,7 +131,7 @@ def fitness_wrapper(int_sols, dbl_sols, data):
     return fitness_function(int_sols[0], int_sols[1], dbl_sols[0], dbl_sols[1], data)
 
 def main():
-    print("TrainSelPy Clinical Hyperparameter Tuning Example")
+    print("EvoSolve Clinical Hyperparameter Tuning Example")
     print("-----------------------------------------------")
     
     # 1. Load Data
@@ -144,7 +144,7 @@ def main():
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     
-    # Create TrainSel Data Object
+    # Create EvoSolve Data Object
     # We don't really need 'M' or 'K' for this specific usage as we use custom fitness,
     # but make_data requires something. We can pass a dummy or the actual data.
     ts_data = make_data(M=X_scaled) 
@@ -189,7 +189,7 @@ def main():
     print("\nStarting Optimization...")
     start_time = time.time()
     
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=candidates,
         setsizes=setsizes,
@@ -211,13 +211,13 @@ def main():
     # Note: For DBL sets, selected_values has the actual float values.
     # For UOS sets, selected_indices has the indices.
     
-    # Let's look at how train_sel returns things.
+    # Let's look at how evolve returns things.
     # Based on core.py, it returns selected_indices and selected_values.
     # For UOS, selected_indices[i] is the list of selected indices.
     # For DBL, selected_values[i] is the list of selected values.
     
     # However, the indices in result.selected_indices correspond to the order of sets.
-    # But wait, `train_sel` usually returns `selected_indices` for all sets.
+    # But wait, `evolve` usually returns `selected_indices` for all sets.
     # For DBL sets, `selected_indices` might not be meaningful or might be empty/dummy?
     # Actually, looking at `genetic_algorithm.py` (implied), DBL variables are handled separately.
     # Let's rely on what we passed to fitness_wrapper.

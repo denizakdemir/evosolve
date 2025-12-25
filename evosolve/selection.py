@@ -1,5 +1,5 @@
 """
-Genetic algorithm selection logic for TrainSelPy.
+Genetic algorithm selection logic for EvoSolve.
 """
 
 import random

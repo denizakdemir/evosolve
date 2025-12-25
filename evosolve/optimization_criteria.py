@@ -1,5 +1,5 @@
 """
-Optimization criteria for TrainSelPy (optimized version).
+Optimization criteria for EvoSolve (optimized version).
 """
 
 import numpy as np

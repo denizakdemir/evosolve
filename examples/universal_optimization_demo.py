@@ -1,7 +1,7 @@
 
 import numpy as np
 import pandas as pd
-from evosolve.core import train_sel, train_sel_control
+from evosolve.core import evolve, evolve_control
 from scipy.spatial.distance import pdist, squareform
 
 def demo_causal_discovery():
@@ -73,13 +73,13 @@ def demo_causal_discovery():
     setsizes = [n_nodes*n_nodes, n_nodes]     
     settypes = ["GRAPH_W", "DBL"]
     
-    control = train_sel_control(
+    control = evolve_control(
         npop=50, niterations=20, 
         use_vae=True, vae_lr=0.005, nn_epochs=20, 
         progress=True
     )
     
-    result = train_sel(
+    result = evolve(
         candidates=candidates, 
         setsizes=setsizes, 
         settypes=settypes,
@@ -145,13 +145,13 @@ def demo_portfolio_clustering():
     setsizes_all = [ n_assets, n_assets ]
     settypes_all = ["PARTITION", "SIMPLEX"]
     
-    control = train_sel_control(
+    control = evolve_control(
         npop=50, niterations=15, 
         mutprob=0.1, 
         progress=True
     )
     
-    result = train_sel(
+    result = evolve(
         candidates=candidates_all,
         setsizes=setsizes_all,
         settypes=settypes_all,
@@ -229,13 +229,13 @@ def demo_metric_learning():
     setsizes = [ n_features, n_features * n_features ] 
     settypes = ["BOOL", "SPD"]
     
-    control = train_sel_control(
+    control = evolve_control(
         npop=30, niterations=10, 
         mutprob=0.05,
         progress=True
     )
     
-    result = train_sel(
+    result = evolve(
         candidates=candidates,
         setsizes=setsizes, 
         settypes=settypes,

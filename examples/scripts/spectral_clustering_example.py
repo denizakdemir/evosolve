@@ -1,12 +1,12 @@
 """
-Example demonstrating how to use TrainSelPy for spectral clustering.
+Example demonstrating how to use EvoSolve for spectral clustering.
 
 Spectral clustering is a technique that uses the eigenvalues of a similarity matrix
 to reduce dimensionality before clustering in fewer dimensions. It's particularly
 effective for identifying non-convex clusters where traditional methods like k-means fail.
 
 This example shows how to:
-1. Implement spectral clustering using TrainSelPy
+1. Implement spectral clustering using EvoSolve
 2. Handle non-convex clusters (like concentric circles)
 3. Compare with traditional clustering methods
 """
@@ -26,10 +26,10 @@ import time
 # Add the parent directory to sys.path to ensure we find our local package
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default
 )
 
@@ -96,7 +96,7 @@ def spectral_clustering_fitness(solution, data):
     # For each point, find the distance to the closest center in the embedded space
     min_distances = np.min(dist_mat[:, solution], axis=1)
     
-    # Return negative sum of distances (since TrainSelPy maximizes fitness)
+    # Return negative sum of distances (since EvoSolve maximizes fitness)
     return -np.sum(min_distances)
 
 
@@ -126,8 +126,8 @@ def assign_clusters(X, centers):
 
 
 def main():
-    """Run a spectral clustering example using TrainSelPy."""
-    print("TrainSelPy Spectral Clustering Example")
+    """Run a spectral clustering example using EvoSolve."""
+    print("EvoSolve Spectral Clustering Example")
     print("------------------------------------")
     
     # Generate synthetic data with non-convex clusters
@@ -173,8 +173,8 @@ def main():
             for j in range(embedded_data.shape[0]):
                 dist_mat[i, j] = np.sqrt(np.sum((embedded_data[i] - embedded_data[j])**2))
         
-        # Create the TrainSel data object
-        print("\nCreating TrainSel data object...")
+        # Create the EvoSolve data object
+        print("\nCreating EvoSolve data object...")
         ts_data = make_data(M=X)
         ts_data["EmbeddedData"] = embedded_data
         ts_data["DistMat"] = dist_mat
@@ -185,11 +185,11 @@ def main():
         control["niterations"] = 100  # Reduced for a faster example
         control["npop"] = 100
         
-        # Run spectral clustering using TrainSelPy
-        print("\nRunning spectral clustering using TrainSelPy...")
+        # Run spectral clustering using EvoSolve
+        print("\nRunning spectral clustering using EvoSolve...")
         
         start_time = time.time()
-        result = train_sel(
+        result = evolve(
             data=ts_data,
             candidates=[list(range(n_samples))],
             setsizes=[n_clusters],
@@ -198,15 +198,15 @@ def main():
             control=control,
             verbose=True
         )
-        trainsel_time = time.time() - start_time
+        evosolve_time = time.time() - start_time
         
         # Extract the selected centers
         centers = result.selected_indices[0]
         
         # Assign clusters based on centers in the embedded space
-        trainsel_labels = assign_clusters(embedded_data, centers)
+        evosolve_labels = assign_clusters(embedded_data, centers)
         
-        print(f"\nTrainSelPy spectral clustering completed in {trainsel_time:.2f} seconds")
+        print(f"\nEvoSolve spectral clustering completed in {evosolve_time:.2f} seconds")
         print(f"Selected centers: {centers}")
         
         # Run standard k-means for comparison
@@ -233,11 +233,11 @@ def main():
         print(f"Scikit-learn spectral clustering completed in {sklearn_time:.2f} seconds")
         
         # Calculate silhouette scores (in original space)
-        trainsel_silhouette = silhouette_score(X, trainsel_labels)
+        evosolve_silhouette = silhouette_score(X, evosolve_labels)
         kmeans_silhouette = silhouette_score(X, kmeans_labels)
         sklearn_silhouette = silhouette_score(X, sklearn_labels)
         
-        print(f"\nSilhouette score for TrainSelPy spectral: {trainsel_silhouette:.4f}")
+        print(f"\nSilhouette score for EvoSolve spectral: {evosolve_silhouette:.4f}")
         print(f"Silhouette score for k-means: {kmeans_silhouette:.4f}")
         print(f"Silhouette score for scikit-learn spectral: {sklearn_silhouette:.4f}")
         
@@ -261,10 +261,10 @@ def main():
         plt.ylabel('Feature 2')
         plt.legend()
         
-        # TrainSelPy spectral clustering
+        # EvoSolve spectral clustering
         plt.subplot(1, 4, 2)
         for cluster_id in range(n_clusters):
-            cluster_points = X[trainsel_labels == cluster_id]
+            cluster_points = X[evosolve_labels == cluster_id]
             plt.scatter(
                 cluster_points[:, 0], 
                 cluster_points[:, 1],
@@ -282,7 +282,7 @@ def main():
             label='Centers'
         )
         
-        plt.title(f'TrainSelPy Spectral\nSilhouette: {trainsel_silhouette:.4f}')
+        plt.title(f'EvoSolve Spectral\nSilhouette: {evosolve_silhouette:.4f}')
         plt.xlabel('Feature 1')
         plt.ylabel('Feature 2')
         plt.legend()
@@ -365,10 +365,10 @@ def main():
         plt.xlabel('Embedding Dimension 1')
         plt.ylabel('Embedding Dimension 2')
         
-        # Embedded space with TrainSelPy clusters
+        # Embedded space with EvoSolve clusters
         plt.subplot(1, 3, 3)
         for cluster_id in range(n_clusters):
-            cluster_points = embedded_data[trainsel_labels == cluster_id]
+            cluster_points = embedded_data[evosolve_labels == cluster_id]
             plt.scatter(
                 cluster_points[:, 0], 
                 cluster_points[:, 1],
@@ -386,7 +386,7 @@ def main():
             label='Centers'
         )
         
-        plt.title('Spectral Embedding\nTrainSelPy Clusters')
+        plt.title('Spectral Embedding\nEvoSolve Clusters')
         plt.xlabel('Embedding Dimension 1')
         plt.ylabel('Embedding Dimension 2')
         plt.legend()

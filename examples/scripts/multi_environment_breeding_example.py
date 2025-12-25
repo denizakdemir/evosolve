@@ -1,7 +1,7 @@
 """
-Multi-Environmental Genomic Breeding Experiment Design using TrainSelPy
+Multi-Environmental Genomic Breeding Experiment Design using EvoSolve
 
-This example demonstrates how to use TrainSelPy with the CDMean criterion for 
+This example demonstrates how to use EvoSolve with the CDMean criterion for 
 designing multi-environmental genomic breeding experiments. It uses a Kronecker 
 product covariance structure to model genotype-by-environment interactions.
 
@@ -12,7 +12,7 @@ Key Concepts:
 - CDMean criterion for optimal training set selection
 - Prediction accuracy evaluation across environments
 
-Author: TrainSelPy Development Team
+Author: EvoSolve Development Team
 Date: 2025-11-24
 """
 
@@ -26,7 +26,7 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from evosolve import make_data, train_sel, set_control_default
+from evosolve import make_data, evolve, set_control_default
 from evosolve.optimization_criteria import cdmean_opt
 
 
@@ -212,7 +212,7 @@ def optimize_training_set_cdmean(
     cdmean_value : float
         CDMean value for the selected set
     """
-    # Create data structure for TrainSelPy
+    # Create data structure for EvoSolve
     data = make_data(K=G_full)
     data["lambda"] = lambda_val
     
@@ -225,7 +225,7 @@ def optimize_training_set_cdmean(
         control["crossprob"] = 0.8
     
     # Run optimization
-    result = train_sel(
+    result = evolve(
         data=data,
         candidates=[list(range(G_full.shape[0]))],
         setsizes=[n_select],
@@ -621,7 +621,7 @@ def main():
     """
     print("="*80)
     print("Multi-Environmental Genomic Breeding Experiment Design")
-    print("Using TrainSelPy with CDMean Criterion and Kronecker Covariance")
+    print("Using EvoSolve with CDMean Criterion and Kronecker Covariance")
     print("="*80)
     
     # Set parameters

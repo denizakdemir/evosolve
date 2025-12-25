@@ -1,5 +1,5 @@
 """
-Genetic algorithm implementation for TrainSelPy.
+Genetic algorithm implementation for EvoSolve.
 This module is deprecated and re-exports functions from:
 - evosolve.algorithms
 - evosolve.operators

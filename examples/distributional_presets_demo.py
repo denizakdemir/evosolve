@@ -18,7 +18,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from evosolve import train_sel, train_sel_control
+from evosolve import evolve, evolve_control
 from evosolve.core import get_distributional_preset
 
 
@@ -94,7 +94,7 @@ def run_preset_comparison():
             print(f"  dist_use_nsga_means: {preset_config['dist_use_nsga_means']} (multi-objective)")
 
         # Run optimization
-        control = train_sel_control(
+        control = evolve_control(
             niterations=30,
             npop=30,
             progress=False,
@@ -104,7 +104,7 @@ def run_preset_comparison():
             **preset_config  # Apply preset
         )
 
-        result = train_sel(
+        result = evolve(
             candidates=[list(range(10))],
             setsizes=[5],  # Select 5 assets
             settypes=["DIST:BOOL"],
@@ -215,7 +215,7 @@ def demonstrate_validation():
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         # Set CVaR alpha but use entropy objective
-        control = train_sel_control(
+        control = evolve_control(
             dist_objective='entropy',
             dist_alpha=0.2,  # This is for CVaR, not entropy!
             dist_K_particles=5,
@@ -227,7 +227,7 @@ def demonstrate_validation():
 
     print("\n2. Testing invalid objective...")
     try:
-        control = train_sel_control(
+        control = evolve_control(
             dist_objective='invalid_objective',
             dist_K_particles=5
         )
@@ -257,11 +257,11 @@ To use a preset in your code:
 
     # Option 1: Use preset directly
     preset = get_distributional_preset('robust')
-    control = train_sel_control(**preset)
+    control = evolve_control(**preset)
 
     # Option 2: Customize a preset
     preset = get_distributional_preset('exploratory', dist_tau=1.0)
-    control = train_sel_control(niterations=100, **preset)
+    control = evolve_control(niterations=100, **preset)
 
 Available presets: 'robust', 'risk_averse', 'exploratory', 'performance'
 """)

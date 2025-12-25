@@ -1,12 +1,12 @@
 """
-Example demonstrating how to use TrainSelPy for k-medoids clustering.
+Example demonstrating how to use EvoSolve for k-medoids clustering.
 
 K-medoids is a clustering algorithm that selects actual data points as cluster centers,
 unlike k-means which uses the mean of points in a cluster. This makes k-medoids more
 robust to outliers and applicable to datasets where means cannot be computed.
 
 This example shows how to:
-1. Implement k-medoids clustering using TrainSelPy
+1. Implement k-medoids clustering using EvoSolve
 2. Compare it with traditional k-means clustering
 3. Demonstrate its robustness to outliers
 """
@@ -25,10 +25,10 @@ import time
 # Add the parent directory to sys.path to ensure we find our local package
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default
 )
 
@@ -49,7 +49,7 @@ def kmedoids_fitness(solution, data):
     Returns
     -------
     float
-        Negative sum of distances (negative because TrainSelPy maximizes fitness)
+        Negative sum of distances (negative because EvoSolve maximizes fitness)
     """
     # Get distance matrix
     dist_mat = data["DistMat"]
@@ -57,7 +57,7 @@ def kmedoids_fitness(solution, data):
     # For each point, find the distance to the closest medoid
     min_distances = np.min(dist_mat[:, solution], axis=1)
     
-    # Return negative sum of distances (since TrainSelPy maximizes fitness)
+    # Return negative sum of distances (since EvoSolve maximizes fitness)
     return -np.sum(min_distances)
 
 
@@ -85,8 +85,8 @@ def assign_clusters(X, medoids):
 
 
 def main():
-    """Run a k-medoids clustering example using TrainSelPy."""
-    print("TrainSelPy K-Medoids Clustering Example")
+    """Run a k-medoids clustering example using EvoSolve."""
+    print("EvoSolve K-Medoids Clustering Example")
     print("-------------------------------------")
     
     # Generate synthetic data with clusters
@@ -118,8 +118,8 @@ def main():
     dist_mat = euclidean_distances(X)
     dist_mat_with_outliers = euclidean_distances(X_with_outliers)
     
-    # Create the TrainSel data objects
-    print("\nCreating TrainSel data objects...")
+    # Create the EvoSolve data objects
+    print("\nCreating EvoSolve data objects...")
     ts_data = make_data(M=X)
     ts_data["DistMat"] = dist_mat
     
@@ -132,12 +132,12 @@ def main():
     control["niterations"] = 100  # Reduced for a faster example
     control["npop"] = 100
     
-    # Run k-medoids clustering using TrainSelPy
-    print("\nRunning k-medoids clustering using TrainSelPy...")
+    # Run k-medoids clustering using EvoSolve
+    print("\nRunning k-medoids clustering using EvoSolve...")
     
     # Without outliers
     start_time = time.time()
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=[list(range(n_samples))],
         setsizes=[n_clusters],
@@ -239,7 +239,7 @@ def main():
     
     # Run k-medoids with outliers
     print("\nRunning k-medoids clustering on data with outliers...")
-    result_with_outliers = train_sel(
+    result_with_outliers = evolve(
         data=ts_data_with_outliers,
         candidates=[list(range(len(X_with_outliers)))],
         setsizes=[n_clusters],
@@ -351,7 +351,7 @@ def main():
     
     for k in k_range:
         print(f"\nTesting with {k} clusters...")
-        result_k = train_sel(
+        result_k = evolve(
             data=ts_data,
             candidates=[list(range(n_samples))],
             setsizes=[k],

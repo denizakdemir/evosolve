@@ -1,5 +1,5 @@
 """
-Example demonstrating multivariate mixed type multi-objective optimization with TrainSelPy.
+Example demonstrating multivariate mixed type multi-objective optimization with EvoSolve.
 
 This example shows how to optimize multiple variables of different types simultaneously
 for drug discovery experiment design, focusing on two conflicting objectives:
@@ -18,10 +18,10 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import time
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
+    evolve,
     set_control_default
 )
 
@@ -138,8 +138,8 @@ def moo_fitness_function(int_solution, dbl_solution, data):
 
 
 def main():
-    """Run a mixed type multi-objective optimization example using TrainSelPy."""
-    print("TrainSelPy Mixed Type Multi-Objective Optimization Example")
+    """Run a mixed type multi-objective optimization example using EvoSolve."""
+    print("EvoSolve Mixed Type Multi-Objective Optimization Example")
     print("----------------------------------------------------------")
     
     # Generate synthetic data
@@ -154,7 +154,7 @@ def main():
         n_targets=n_targets
     )
     
-    # Create the TrainSel data object
+    # Create the EvoSolve data object
     ts_data = make_data(M=compound_features)
     ts_data["TargetActivities"] = target_activities
     ts_data["CompoundCosts"] = compound_costs
@@ -178,7 +178,7 @@ def main():
     start_time = time.time()
     
     # Run multi-objective optimization
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=[
             list(range(n_compounds)),  # Candidate compounds (UOS)

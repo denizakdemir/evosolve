@@ -1,11 +1,11 @@
 """
-TrainSelPy: Python implementation of the TrainSel package for optimal training set selection
+EvoSolve: A General Purpose Evolutionary Optimization Framework
 """
 
 from evosolve.core import (
     make_data,
-    train_sel,
-    train_sel_control,
+    evolve,
+    evolve_control,
     set_control_default,
     time_estimation
 )

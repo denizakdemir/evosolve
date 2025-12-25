@@ -1,7 +1,7 @@
 """
 Comprehensive integration tests for advanced optimization heads.
 
-Tests full end-to-end workflows with train_sel(), including:
+Tests full end-to-end workflows with evolve(), including:
 - Single and multi-objective optimization
 - Neural enhancement (VAE/GAN)
 - Mixed-type optimization
@@ -10,7 +10,7 @@ Tests full end-to-end workflows with train_sel(), including:
 
 import pytest
 import numpy as np
-from evosolve.core import train_sel
+from evosolve.core import evolve
 
 
 class TestAdvancedHeadsIntegration:
@@ -28,7 +28,7 @@ class TestAdvancedHeadsIntegration:
             return float(np.sum(dbl_vals))
         
         # Single-objective
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,
@@ -56,7 +56,7 @@ class TestAdvancedHeadsIntegration:
             mat = dbl_vals.reshape(n, n)
             return float(np.linalg.det(mat))
         
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,
@@ -87,7 +87,7 @@ class TestAdvancedHeadsIntegration:
             eps = 1e-10
             return -float(np.sum(vec * np.log(vec + eps)))
         
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,
@@ -118,7 +118,7 @@ class TestAdvancedHeadsIntegration:
             bool_count = float(np.sum(int_vals[0]))  # BOOL
             return graph_sum + param_sum + bool_count
         
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,
@@ -152,7 +152,7 @@ class TestAdvancedHeadsIntegration:
             obj2 = float(np.sum(graph ** 2))
             return [obj1, obj2]
         
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,
@@ -199,7 +199,7 @@ class TestAdvancedHeadsIntegration:
             
             return -float(total_variance)  # Minimize variance
         
-        result = train_sel(
+        result = evolve(
             data={'features': features},
             candidates=candidates,
             setsizes=setsizes,
@@ -239,7 +239,7 @@ class TestAdvancedHeadsIntegration:
             expected_return = float(np.dot(weights, returns))
             return expected_return
         
-        result = train_sel(
+        result = evolve(
             data={'returns': asset_returns},
             candidates=candidates,
             setsizes=setsizes,
@@ -271,7 +271,7 @@ class TestAdvancedHeadsIntegration:
         def graph_fitness(dbl_vals, data):
             return float(np.sum(dbl_vals))
         
-        result = train_sel(
+        result = evolve(
             candidates=candidates,
             setsizes=setsizes,
             settypes=settypes,

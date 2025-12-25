@@ -1,5 +1,5 @@
 """
-True Multi-objective optimization example for TrainSelPy.
+True Multi-objective optimization example for EvoSolve.
 """
 
 import numpy as np
@@ -8,11 +8,11 @@ import time
 import matplotlib.pyplot as plt
 from typing import List
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data, 
-    train_sel, 
-    train_sel_control,
+    evolve, 
+    evolve_control,
     dopt,
     cdmean_opt
 )
@@ -78,7 +78,7 @@ def multi_objective_fitness(solution: List[int], data: dict) -> List[float]:
 def main():
     """Run a true multi-objective optimization example with solution diversity."""
     
-    print("TrainSelPy True Multi-objective Optimization Example - With Solution Diversity")
+    print("EvoSolve True Multi-objective Optimization Example - With Solution Diversity")
     print("--------------------------------------------------------------------------")
     
     # Create a test dataset
@@ -100,8 +100,8 @@ def main():
     
     print(f"Created dataset with {n_samples} samples and {n_features} features")
     
-    # Create the TrainSel data object
-    print("\nCreating TrainSel data object...")
+    # Create the EvoSolve data object
+    print("\nCreating EvoSolve data object...")
     
     # Create relationship matrix
     K = np.dot(M, M.T) / n_features
@@ -114,7 +114,7 @@ def main():
     
     # Set control parameters for multi-objective optimization
     print("\nSetting control parameters...")
-    control = train_sel_control(
+    control = evolve_control(
         size="free",
         niterations=100,    # Number of iterations
         minitbefstop=30,    # Stop if no improvement for this many iterations
@@ -136,7 +136,7 @@ def main():
     print("\nRunning true multi-objective optimization with solution diversity...")
     start_time = time.time()
     
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=[list(range(n_samples))],  # Select from all samples
         setsizes=[20],                        # Select 20 samples

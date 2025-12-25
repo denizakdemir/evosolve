@@ -1,5 +1,5 @@
 """
-Multi-Objective Continuous Variable Optimization Example for TrainSelPy.
+Multi-Objective Continuous Variable Optimization Example for EvoSolve.
 
 This example demonstrates multi-objective optimization of continuous variables
 in a portfolio allocation problem, balancing multiple objectives:
@@ -16,11 +16,11 @@ import time
 import random
 from typing import List, Dict, Any
 
-# Import TrainSelPy functions
+# Import EvoSolve functions
 from evosolve import (
     make_data,
-    train_sel,
-    train_sel_control
+    evolve,
+    evolve_control
 )
 
 def generate_assets(n_assets=10, random_seed=42):
@@ -193,8 +193,8 @@ def portfolio_objectives(dbl_solution, data):
     return [return_objective, risk_objective, diversity_objective]
 
 def main():
-    """Run a multi-objective continuous variable optimization example using TrainSelPy."""
-    print("TrainSelPy Multi-Objective Continuous Optimization Example")
+    """Run a multi-objective continuous variable optimization example using EvoSolve."""
+    print("EvoSolve Multi-Objective Continuous Optimization Example")
     print("--------------------------------------------------------")
     
     # Generate synthetic assets
@@ -208,14 +208,14 @@ def main():
         print(f"Asset {i+1} ({assets['sectors'][i]}): Expected Return={assets['expected_return'][i]:.2f}, " +
               f"Volatility={assets['volatility'][i]:.2f}")
     
-    # Create TrainSel data object
+    # Create EvoSolve data object
     print("\nSetting up multi-objective optimization...")
     ts_data = make_data(M=asset_features)
     ts_data['assets'] = assets
     
     # Set control parameters for multi-objective optimization
     # We'll use a single-island approach with higher population diversity
-    control = train_sel_control(
+    control = evolve_control(
         size="free",
         niterations=100,       # Number of iterations
         minitbefstop=30,       # Stop if no improvement for this many iterations
@@ -264,7 +264,7 @@ def main():
     initial_population = [high_return_init, low_risk_init, diversification_init] + random_inits
     
     # Run the optimization with multiple initial solutions
-    result = train_sel(
+    result = evolve(
         data=ts_data,
         candidates=[
             list(range(n_assets))  # Full range of assets to choose from

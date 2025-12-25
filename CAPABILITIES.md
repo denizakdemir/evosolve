@@ -159,7 +159,7 @@ def multi_objective(solution, data):
     obj2 = compute_sparsity(solution, data)
     return [obj1, obj2]
 
-result = train_sel(
+result = evolve(
     ...,
     stat=multi_objective,
     n_stat=2,  # 2 objectives
