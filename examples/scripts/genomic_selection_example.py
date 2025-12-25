@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import Ridge
 
 # Import TrainSelPy functions
-from trainselpy import (
+from evosolve import (
     make_data,
     train_sel,
     set_control_default,

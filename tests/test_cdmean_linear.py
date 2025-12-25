@@ -1,8 +1,8 @@
 
 import numpy as np
 import pytest
-from trainselpy.core import make_data
-from trainselpy.optimization_criteria import cdmean_opt, cdmean_opt_linear
+from evosolve.core import make_data
+from evosolve.optimization_criteria import cdmean_opt, cdmean_opt_linear
 
 def test_cdmean_linear_dispatch():
     """

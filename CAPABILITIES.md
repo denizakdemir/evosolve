@@ -1,8 +1,8 @@
-# TrainSelPy Capabilities
+# EvoSolve Capabilities
 
 ## Decision Variable Types
 
-TrainSelPy supports a comprehensive range of decision variable types for diverse optimization problems.
+EvoSolve supports a comprehensive range of decision variable types for diverse optimization problems.
 
 ### Core Variable Types (Legacy)
 
@@ -126,7 +126,7 @@ TrainSelPy supports a comprehensive range of decision variable types for diverse
 
 ### Mixed Forms
 
-TrainSelPy supports **arbitrary combinations** of decision variable types in a single optimization problem.
+EvoSolve supports **arbitrary combinations** of decision variable types in a single optimization problem.
 
 **Example: Mixed-Type Optimization**
 ```python
@@ -144,7 +144,7 @@ def mixed_fitness(mask, hyperparams, graph, data):
 
 ### Multi-Task / Multi-Objective Optimization
 
-TrainSelPy supports multi-objective optimization with Pareto front discovery.
+EvoSolve supports multi-objective optimization with Pareto front discovery.
 
 **Features**:
 - NSGA-II and NSGA-III algorithms

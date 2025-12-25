@@ -1,7 +1,7 @@
 
 import numpy as np
 import pandas as pd
-from trainselpy.core import train_sel, train_sel_control
+from evosolve.core import train_sel, train_sel_control
 from scipy.spatial.distance import pdist, squareform
 
 def demo_causal_discovery():

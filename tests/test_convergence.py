@@ -1,7 +1,7 @@
 
 import unittest
 import numpy as np
-from trainselpy import train_sel, set_control_default, make_data
+from evosolve import train_sel, set_control_default, make_data
 
 import random
 
@@ -121,7 +121,7 @@ class TestConvergence(unittest.TestCase):
             return np.sum(data["values"][mask])
 
         # For BOOL, setsizes is ignored (or length of vector), candidates is usually just [0, 1] implied
-        # In trainselpy, for BOOL, candidates[i] is the list of possible values? 
+        # In evosolve, for BOOL, candidates[i] is the list of possible values? 
         # No, for BOOL, the "solution" is a list of 0/1 of length setsizes[0].
         # Let's check how BOOL is initialized.
         # initialize_population:

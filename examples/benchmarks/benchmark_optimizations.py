@@ -8,8 +8,8 @@ import time
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from trainselpy.core import train_sel
-from trainselpy.optimization_criteria import cdmean_opt
+from evosolve.core import train_sel
+from evosolve.optimization_criteria import cdmean_opt
 
 # Create a test problem
 np.random.seed(42)

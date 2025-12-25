@@ -14,8 +14,8 @@ from scipy.spatial.distance import pdist, squareform
 import warnings
 import random
 
-from trainselpy.optimization_criteria import cdmean_opt
-from trainselpy.algorithms import (
+from evosolve.optimization_criteria import cdmean_opt
+from evosolve.algorithms import (
     genetic_algorithm,
     island_model_ga
 )
@@ -217,7 +217,7 @@ def make_data(
         
     if L is not None:
         # Precompute matrices for linear contrast optimization
-        from trainselpy.optimization_criteria import _ensure_numpy
+        from evosolve.optimization_criteria import _ensure_numpy
         L_arr = _ensure_numpy(L)
         G_arr = _ensure_numpy(big_K)
         

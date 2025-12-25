@@ -27,7 +27,7 @@ import time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # Import TrainSelPy functions
-from trainselpy import (
+from evosolve import (
     make_data,
     train_sel,
     set_control_default

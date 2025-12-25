@@ -1,7 +1,7 @@
 
 import unittest
 import numpy as np
-from trainselpy.relaxations import DOptimality, AOptimality, ConvexRelaxationSolver, discretize, CDMeanOptimality, PEVOptimality
+from evosolve.relaxations import DOptimality, AOptimality, ConvexRelaxationSolver, discretize, CDMeanOptimality, PEVOptimality
 
 class TestRelaxations(unittest.TestCase):
     def setUp(self):

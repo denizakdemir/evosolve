@@ -9,8 +9,8 @@ This script verifies that distributional operators handle:
 
 import numpy as np
 import pytest
-from trainselpy.solution import Solution
-from trainselpy.distributional_head import (
+from evosolve.solution import Solution
+from evosolve.distributional_head import (
     ParticleDistribution,
     DistributionalSolution,
     crossover_particle_mixture,

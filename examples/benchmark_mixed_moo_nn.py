@@ -1,7 +1,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from trainselpy.algorithms import genetic_algorithm
+from evosolve.algorithms import genetic_algorithm
 import time
 import os
 

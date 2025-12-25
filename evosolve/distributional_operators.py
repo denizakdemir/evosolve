@@ -7,8 +7,8 @@ to integrate them with TrainSelPy's GA infrastructure.
 
 import numpy as np
 from typing import List, Dict, Callable, Optional, Any
-from trainselpy.solution import Solution
-from trainselpy.distributional_head import (
+from evosolve.solution import Solution
+from evosolve.distributional_head import (
     ParticleDistribution,
     DistributionalSolution,
     crossover_particle_mixture,
@@ -119,7 +119,7 @@ def distributional_mutation(
     control : Dict[str, Any]
         Control parameters
     """
-    from trainselpy.operators import mutation
+    from evosolve.operators import mutation
     
     # Extract base type from DIST:TYPE
     base_type = settypes[0].split(":")[1] if ":" in settypes[0] else "BOOL"
@@ -192,7 +192,7 @@ def initialize_distributional_population(
     List[DistributionalSolution]
         Initial population of distributions
     """
-    from trainselpy.algorithms import initialize_population
+    from evosolve.algorithms import initialize_population
 
     # Check for mixed schemas (distributional + non-distributional types)
     has_dist = any("DIST:" in st for st in settypes)

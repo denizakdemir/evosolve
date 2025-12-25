@@ -15,7 +15,7 @@ import pickle
 import os
 from pathlib import Path
 
-from trainselpy import (
+from evosolve import (
     make_data,
     train_sel,
     set_control_default

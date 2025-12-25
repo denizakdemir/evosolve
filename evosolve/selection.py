@@ -4,7 +4,7 @@ Genetic algorithm selection logic for TrainSelPy.
 
 import random
 from typing import List
-from trainselpy.solution import Solution
+from evosolve.solution import Solution
 
 def fast_non_dominated_sort(population: List[Solution]) -> List[List[Solution]]:
     """

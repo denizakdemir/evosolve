@@ -17,7 +17,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from trainselpy.distributional_head import (
+from evosolve.distributional_head import (
     ParticleDistribution,
     mean_objective,
     mean_variance_objective,
@@ -29,8 +29,8 @@ from trainselpy.distributional_head import (
     compress_top_k,
     compress_kmeans  # NEW: K-means clustering compression
 )
-from trainselpy.solution import Solution
-from trainselpy.operators import mutation
+from evosolve.solution import Solution
+from evosolve.operators import mutation
 
 
 def simple_binary_fitness(int_vals, dbl_vals=None, data=None):
@@ -146,7 +146,7 @@ def main():
     # 5. Result Extraction (Integrated GA Style)
     print("\n5. GA Integration: Result Dataclass")
     print("-" * 70)
-    from trainselpy.core import TrainSelResult
+    from evosolve.core import TrainSelResult
     
     # Simulate a result coming from train_sel()
     result = TrainSelResult(

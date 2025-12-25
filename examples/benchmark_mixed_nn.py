@@ -1,7 +1,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from trainselpy.algorithms import genetic_algorithm
+from evosolve.algorithms import genetic_algorithm
 import time
 import os
 
@@ -164,7 +164,7 @@ def run_benchmark():
     # Plotting if history available? (Genetic algorithm returns final solution/result dict)
     # If we want history, we'd need to modify GA to return it or capture logs.
     # The current GA prints progress but doesn't return history list in simple mode?
-    # Actually `trainselpy` usually returns dict.
+    # Actually `evosolve` usually returns dict.
     # Let's check `result` keys.
     # It seems it returns 'solution', 'fitness', etc.
     

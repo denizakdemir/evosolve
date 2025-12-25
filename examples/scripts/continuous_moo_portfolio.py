@@ -17,7 +17,7 @@ import random
 from typing import List, Dict, Any
 
 # Import TrainSelPy functions
-from trainselpy import (
+from evosolve import (
     make_data, 
     train_sel, 
     train_sel_control

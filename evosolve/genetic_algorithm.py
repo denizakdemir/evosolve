@@ -1,12 +1,12 @@
 """
 Genetic algorithm implementation for TrainSelPy.
 This module is deprecated and re-exports functions from:
-- trainselpy.algorithms
-- trainselpy.operators
-- trainselpy.selection
+- evosolve.algorithms
+- evosolve.operators
+- evosolve.selection
 """
 
-from trainselpy.algorithms import (
+from evosolve.algorithms import (
     genetic_algorithm,
     island_model_ga,
     initialize_population,
@@ -14,12 +14,12 @@ from trainselpy.algorithms import (
     simulated_annealing
 )
 
-from trainselpy.operators import (
+from evosolve.operators import (
     crossover,
     mutation
 )
 
-from trainselpy.selection import (
+from evosolve.selection import (
     selection,
     fast_non_dominated_sort,
     calculate_crowding_distance

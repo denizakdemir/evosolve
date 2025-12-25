@@ -1,7 +1,7 @@
 
 import unittest
 import numpy as np
-from trainselpy.solution import Solution, flatten_dbl_values, unflatten_dbl_values
+from evosolve.solution import Solution, flatten_dbl_values, unflatten_dbl_values
 
 class TestSolutionStorage(unittest.TestCase):
     def test_init_and_storage(self):

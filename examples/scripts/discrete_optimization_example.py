@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 
 # Import TrainSelPy functions
-from trainselpy import (
+from evosolve import (
     make_data,
     train_sel,
     train_sel_control

@@ -16,8 +16,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Tuple
 
-from trainselpy import train_sel, train_sel_control
-from trainselpy.core import TrainSelResult
+from evosolve import train_sel, train_sel_control
+from evosolve.core import TrainSelResult
 
 
 def make_breeding_data(n_animals: int = 40, kinship_strength: float = 0.25, seed: int = 7):

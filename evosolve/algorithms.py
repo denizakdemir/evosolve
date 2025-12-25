@@ -9,21 +9,21 @@ import random
 from joblib import Parallel, delayed
 import math
 
-from trainselpy.solution import Solution, flatten_dbl_values, unflatten_dbl_values
-from trainselpy.utils import (
+from evosolve.solution import Solution, flatten_dbl_values, unflatten_dbl_values
+from evosolve.utils import (
     calculate_relationship_matrix,
     create_mixed_model_data,
     compute_hypervolume
 )
-from trainselpy.cma_es import CMAESOptimizer
-from trainselpy.surrogate import SurrogateModel
-from trainselpy.nsga3 import nsga3_selection, generate_reference_points
-from trainselpy.operators import crossover, mutation
-from trainselpy.selection import selection, fast_non_dominated_sort, calculate_crowding_distance
+from evosolve.cma_es import CMAESOptimizer
+from evosolve.surrogate import SurrogateModel
+from evosolve.nsga3 import nsga3_selection, generate_reference_points
+from evosolve.operators import crossover, mutation
+from evosolve.selection import selection, fast_non_dominated_sort, calculate_crowding_distance
 try:
     import torch
     import torch.optim as optim
-    from trainselpy.nn_models import VAE, Generator, Discriminator, DecisionStructure, compute_gradient_penalty
+    from evosolve.nn_models import VAE, Generator, Discriminator, DecisionStructure, compute_gradient_penalty
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -60,7 +60,7 @@ def initialize_population(
     # Check if this is distributional optimization
     if any("DIST:" in st for st in settypes):
         # Use distributional initialization
-        from trainselpy.distributional_operators import initialize_distributional_population
+        from evosolve.distributional_operators import initialize_distributional_population
         # Create minimal control dict if None
         if control is None:
             control = {"dist_K_particles": 10}
@@ -283,7 +283,7 @@ def evaluate_fitness(
         return
 
     # Check if this is distributional optimization
-    from trainselpy.distributional_head import (
+    from evosolve.distributional_head import (
         DistributionalSolution,
         aggregate_distributional_objectives,
         evaluate_particle_objectives,
@@ -1984,7 +1984,7 @@ def genetic_algorithm(
         
         if is_distributional:
             # Use distributional operators
-            from trainselpy.distributional_operators import distributional_crossover, distributional_mutation
+            from evosolve.distributional_operators import distributional_crossover, distributional_mutation
             
             offspring = distributional_crossover(
                 parents, cross_prob, cross_intensity, settypes, candidates, control
@@ -2075,7 +2075,7 @@ def genetic_algorithm(
         # --- Apply simulated annealing (SA) on elite solutions periodically ---
         # Changed to apply every sann_frequency generations instead of every generation for efficiency
         # Skip SA for distributional optimization (not yet supported)
-        from trainselpy.distributional_head import DistributionalSolution
+        from evosolve.distributional_head import DistributionalSolution
         if population and isinstance(population[0], DistributionalSolution):
             pass
         else:
@@ -2300,7 +2300,7 @@ def genetic_algorithm(
                     print(f"Warning: Callback raised exception at generation {gen}: {e}")
 
     # Process the result
-    from trainselpy.distributional_head import DistributionalSolution
+    from evosolve.distributional_head import DistributionalSolution
     
     if n_stat == 1:
         if isinstance(best_solution, DistributionalSolution):
@@ -2319,7 +2319,7 @@ def genetic_algorithm(
         }
     else:
         # Multi-objective result processing
-        from trainselpy.distributional_head import DistributionalSolution  # Local import to avoid cycles
+        from evosolve.distributional_head import DistributionalSolution  # Local import to avoid cycles
 
         is_dist = isinstance(best_solution, DistributionalSolution)
 

@@ -4,11 +4,11 @@ Verification script for TrainSelPy advanced features.
 
 import numpy as np
 import time
-from trainselpy.genetic_algorithm import genetic_algorithm
-from trainselpy.solution import Solution
-from trainselpy.cma_es import CMAESOptimizer
-from trainselpy.surrogate import SurrogateModel
-from trainselpy.nsga3 import generate_reference_points
+from evosolve.genetic_algorithm import genetic_algorithm
+from evosolve.solution import Solution
+from evosolve.cma_es import CMAESOptimizer
+from evosolve.surrogate import SurrogateModel
+from evosolve.nsga3 import generate_reference_points
 
 def test_cma_es():
     print("\n--- Testing CMA-ES Integration ---")

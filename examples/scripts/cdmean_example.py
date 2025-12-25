@@ -16,7 +16,7 @@ sys.path.insert(0, current_dir)
 from custom_cdmean import custom_cdmean
 
 # Import TrainSelPy functions
-from trainselpy import (
+from evosolve import (
     make_data, 
     train_sel, 
     set_control_default,

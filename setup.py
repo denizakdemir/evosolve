@@ -1,20 +1,21 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="trainselpy",
+    name="evosolve",
     version="0.1.1",
     author="Deniz Akdemir",
-    author_email="deniz.akdemir@cornell.edu",
-    description="Training Population Selection Optimization",
+    author_email="deniz.akdemir@gmail.com",
+    description="EvoSolve: A General Purpose Evolutionary Optimization Framework",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/denizakdemir/trainselpy",
+    # url="https://github.com/denizakdemir/evosolve", # TODO: Update URL when repo is renamed
     packages=find_packages(),
     license="MIT",
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
-        "Topic :: Scientific/Engineering :: Bio-Informatics",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Mathematics", 
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",

@@ -8,7 +8,7 @@ It requires rpy2 to be installed.
 import os
 import sys
 import pickle
-from trainselpy.utils import r_data_to_python
+from evosolve.utils import r_data_to_python
 
 
 def main():

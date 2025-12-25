@@ -26,8 +26,8 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from trainselpy import make_data, train_sel, set_control_default
-from trainselpy.optimization_criteria import cdmean_opt
+from evosolve import make_data, train_sel, set_control_default
+from evosolve.optimization_criteria import cdmean_opt
 
 
 def simulate_genomic_data(

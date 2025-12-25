@@ -7,7 +7,7 @@ import numpy as np
 from typing import List, Tuple, Dict, Any
 from itertools import combinations_with_replacement
 
-from trainselpy.solution import Solution
+from evosolve.solution import Solution
 
 def generate_reference_points(M: int, p: int) -> np.ndarray:
     """
@@ -211,7 +211,7 @@ def nsga3_selection(
     List[Solution]
         Selected solutions
     """
-    from trainselpy.genetic_algorithm import fast_non_dominated_sort
+    from evosolve.genetic_algorithm import fast_non_dominated_sort
     
     # 1. Non-dominated sorting
     fronts = fast_non_dominated_sort(population)

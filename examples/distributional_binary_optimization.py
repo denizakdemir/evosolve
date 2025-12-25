@@ -27,8 +27,8 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from trainselpy import train_sel, train_sel_control
-from trainselpy.core import get_distributional_preset  # NEW: Quick-start presets
+from evosolve import train_sel, train_sel_control
+from evosolve.core import get_distributional_preset  # NEW: Quick-start presets
 
 
 def multimodal_binary_fitness(int_vals, dbl_vals=None, data=None):
@@ -238,7 +238,7 @@ def demonstrate_validation():
     # Example 2: Mixed schema validation
     print("\n2. Testing mixed schema validation...")
     try:
-        from trainselpy.distributional_operators import initialize_distributional_population
+        from evosolve.distributional_operators import initialize_distributional_population
         control = train_sel_control(dist_K_particles=3)
         pop = initialize_distributional_population(
             candidates=[list(range(10)), list(range(5))],

@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
-from trainselpy.algorithms import initialize_population
-from trainselpy.operators import mutation, crossover
-from trainselpy.solution import Solution
+from evosolve.algorithms import initialize_population
+from evosolve.operators import mutation, crossover
+from evosolve.solution import Solution
 
 class TestGraphHead:
     """Tests for Graph Optimization Head."""
@@ -177,7 +177,7 @@ class TestMultiObjectiveHeads:
     
     def test_graph_w_multiobjective(self):
         """Test GRAPH_W with multi-objective optimization (sparsity vs sum)."""
-        from trainselpy.core import train_sel
+        from evosolve.core import train_sel
         
         n_nodes = 3
         setsizes = [n_nodes * n_nodes]
@@ -212,7 +212,7 @@ class TestMultiObjectiveHeads:
     
     def test_graph_u_multiobjective(self):
         """Test GRAPH_U with multi-objective (connectivity vs edges)."""
-        from trainselpy.core import train_sel
+        from evosolve.core import train_sel
         
         n_nodes = 4
         setsizes = [n_nodes * n_nodes]
@@ -247,7 +247,7 @@ class TestMultiObjectiveHeads:
     
     def test_spd_multiobjective(self):
         """Test SPD with multi-objective (determinant vs condition number)."""
-        from trainselpy.core import train_sel
+        from evosolve.core import train_sel
         
         n = 2
         setsizes = [n * n]
@@ -292,7 +292,7 @@ class TestMultiObjectiveHeads:
     
     def test_simplex_multiobjective(self):
         """Test SIMPLEX with multi-objective (entropy vs concentration)."""
-        from trainselpy.core import train_sel
+        from evosolve.core import train_sel
         
         dim = 5
         setsizes = [dim]
@@ -337,7 +337,7 @@ class TestMultiObjectiveHeads:
     
     def test_partition_multiobjective(self):
         """Test PARTITION with multi-objective (balance vs diversity)."""
-        from trainselpy.core import train_sel
+        from evosolve.core import train_sel
         
         n_items = 12
         n_groups = 3

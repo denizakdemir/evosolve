@@ -1,7 +1,7 @@
 import pytest
 import torch
 import torch.nn as nn
-from trainselpy.nn_models import VAE, Generator, Discriminator, DecisionStructure, compute_gradient_penalty
+from evosolve.nn_models import VAE, Generator, Discriminator, DecisionStructure, compute_gradient_penalty
 
 @pytest.fixture
 def structure():

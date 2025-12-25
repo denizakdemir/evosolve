@@ -2,7 +2,7 @@
 TrainSelPy: Python implementation of the TrainSel package for optimal training set selection
 """
 
-from trainselpy.core import (
+from evosolve.core import (
     make_data,
     train_sel,
     train_sel_control,
@@ -10,7 +10,7 @@ from trainselpy.core import (
     time_estimation
 )
 
-from trainselpy.optimization_criteria import (
+from evosolve.optimization_criteria import (
     dopt,
     maximin_opt,
     pev_opt,
@@ -22,7 +22,7 @@ from trainselpy.optimization_criteria import (
     coverage_opt
 )
 
-from trainselpy.utils import (
+from evosolve.utils import (
     r_data_to_python,
     create_distance_matrix,
     calculate_relationship_matrix,
@@ -32,11 +32,11 @@ from trainselpy.utils import (
 )
 
 # Import data module
-from trainselpy.data import wheat_data
+from evosolve.data import wheat_data
 
 
 # Import relaxations module
-from trainselpy.relaxations import (
+from evosolve.relaxations import (
     DOptimality,
     AOptimality,
     CDMeanOptimality,

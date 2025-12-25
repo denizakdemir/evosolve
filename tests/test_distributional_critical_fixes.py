@@ -7,19 +7,19 @@ critical bugs identified in the audit.
 
 import pytest
 import numpy as np
-from trainselpy.solution import Solution
-from trainselpy.algorithms import (
+from evosolve.solution import Solution
+from evosolve.algorithms import (
     initialize_population,
     evaluate_fitness,
 )
-from trainselpy.core import train_sel_control
-from trainselpy.distributional_head import (
+from evosolve.core import train_sel_control
+from evosolve.distributional_head import (
     ParticleDistribution,
     DistributionalSolution,
     entropy_regularized_objective,
     mean_objective,
 )
-from trainselpy.distributional_operators import (
+from evosolve.distributional_operators import (
     initialize_distributional_population,
 )
 
@@ -391,7 +391,7 @@ class TestPhase3_2_CMAESCompatibility:
 
     def test_cmaes_with_distributional_raises_error(self):
         """Test that CMA-ES + distributional raises clear error."""
-        from trainselpy.core import train_sel
+        from evosolve.core import train_sel
 
         candidates = [list(range(10))]
         setsizes = [5]
@@ -427,7 +427,7 @@ class TestPhase3_3_CompressKmeans:
 
     def test_compress_kmeans_exists_and_works(self):
         """Test that compress_kmeans exists and can compress a distribution."""
-        from trainselpy.distributional_head import compress_kmeans
+        from evosolve.distributional_head import compress_kmeans
 
         particles = [
             Solution(int_values=[np.array([i])], fitness=float(i))

@@ -5,8 +5,8 @@ import os
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from trainselpy.solution import Solution
-from trainselpy.distributional_head import (
+from evosolve.solution import Solution
+from evosolve.distributional_head import (
     ParticleDistribution,
     compress_top_k,
     compress_resampling,

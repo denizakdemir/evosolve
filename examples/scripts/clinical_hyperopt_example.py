@@ -22,7 +22,7 @@ from sklearn.exceptions import ConvergenceWarning
 import warnings
 
 # Import TrainSelPy functions
-from trainselpy import (
+from evosolve import (
     make_data,
     train_sel,
     set_control_default

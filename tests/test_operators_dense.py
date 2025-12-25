@@ -2,7 +2,7 @@
 import unittest
 import time
 import random
-from trainselpy.operators import _get_valid_replacement
+from evosolve.operators import _get_valid_replacement
 
 class TestOperatorsDense(unittest.TestCase):
     def test_dense_selection_performance(self):

@@ -6,18 +6,18 @@ Following TDD methodology - tests written before implementation.
 
 import pytest
 import numpy as np
-from trainselpy.solution import Solution
-from trainselpy.algorithms import (
+from evosolve.solution import Solution
+from evosolve.algorithms import (
     initialize_population,
     evaluate_fitness,
     _select_next_generation,
 )
-from trainselpy.selection import fast_non_dominated_sort
-from trainselpy.core import train_sel_control
+from evosolve.selection import fast_non_dominated_sort
+from evosolve.core import train_sel_control
 
 # Tests will be written for distributional_head module
 try:
-    from trainselpy.distributional_head import (
+    from evosolve.distributional_head import (
         ParticleDistribution,
         DistributionalSolution,
         mean_objective,

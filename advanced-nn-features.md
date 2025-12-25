@@ -303,7 +303,7 @@ Used for:
 
 ---
 
-# 6. Final Recommendation (Default TrainSelPy Stack)
+# 6. Final Recommendation (Default EvoSolve Stack)
 
 If you want a **single default configuration** that is safe and powerful:
 

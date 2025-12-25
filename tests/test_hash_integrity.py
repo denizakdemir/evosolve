@@ -2,8 +2,8 @@ import random
 
 import numpy as np
 
-from trainselpy.solution import Solution
-from trainselpy.operators import mutation
+from evosolve.solution import Solution
+from evosolve.operators import mutation
 
 
 def test_solution_hash_changes_after_manual_invalidated_edit():

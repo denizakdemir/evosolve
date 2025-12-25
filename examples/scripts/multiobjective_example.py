@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from typing import List
 
 # Import TrainSelPy functions
-from trainselpy import (
+from evosolve import (
     make_data, 
     train_sel, 
     train_sel_control,

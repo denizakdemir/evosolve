@@ -1,10 +1,10 @@
 import unittest
 import numpy as np
 import random
-from trainselpy.solution import Solution
-from trainselpy.operators import crossover, mutation
-from trainselpy.selection import selection, fast_non_dominated_sort
-from trainselpy.algorithms import initialize_population, genetic_algorithm
+from evosolve.solution import Solution
+from evosolve.operators import crossover, mutation
+from evosolve.selection import selection, fast_non_dominated_sort
+from evosolve.algorithms import initialize_population, genetic_algorithm
 
 class TestTrainSelPy(unittest.TestCase):
     def setUp(self):
@@ -115,7 +115,7 @@ class TestTrainSelPy(unittest.TestCase):
         data = {}
         surrogate = MockSurrogate()
         
-        from trainselpy.algorithms import evaluate_fitness
+        from evosolve.algorithms import evaluate_fitness
         
         # Correct initialization using constructor to ensure array storage
         pop = [Solution(int_values=[[1, 2, 3]])]
@@ -144,7 +144,7 @@ class TestTrainSelPy(unittest.TestCase):
                     score = float(sum(int_values[0]))
                 return score, 0.0
                 
-        from trainselpy.algorithms import generate_from_surrogate
+        from evosolve.algorithms import generate_from_surrogate
         
         candidates = [list(range(10))]
         setsizes = [3]

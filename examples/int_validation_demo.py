@@ -10,9 +10,9 @@ implementation in TrainSelPy, including:
 """
 
 import numpy as np
-from trainselpy import train_sel, train_sel_control
-from trainselpy.algorithms import initialize_population
-from trainselpy.operators import mutation, crossover
+from evosolve import train_sel, train_sel_control
+from evosolve.algorithms import initialize_population
+from evosolve.operators import mutation, crossover
 
 print("="*70)
 print("INT Type Validation for TrainSelPy")

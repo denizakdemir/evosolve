@@ -13,7 +13,7 @@ of all advanced heads in TrainSelPy:
 
 import numpy as np
 import matplotlib.pyplot as plt
-from trainselpy.core import train_sel
+from evosolve.core import train_sel
 
 np.random.seed(42)
 

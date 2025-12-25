@@ -1,35 +1,37 @@
-# TrainSelPy
+# EvoSolve: General Purpose Evolutionary Optimization Framework
 
-A general-purpose GA-SANN hybrid optimizer for complex optimization problems (subset, ordered subset, integer, continuous) and combinations of these. While originally designed for optimal selection of training populations, it is applicable to a wide range of optimization tasks.
+A general-purpose hybrid optimizer combining Genetic Algorithms (GA), Simulated Annealing (SANN), and modern Neural enhancements. Originally derived from the EvoSolve project, EvoSolve is designed to solve a wide range of complex optimization problems involving subset selection, integer decisions, continuous variables, graph structures, and manifolds.
 
 ## Overview
 
-TrainSelPy provides a flexible framework for solving complex optimization problems using a hybrid approach combining Genetic Algorithms (GA) and Simulated Annealing (SANN). It supports various variable types including subsets (unordered sets), ordered subsets, integer variables, and continuous variables, as well as combinations of these.
+EvoSolve provides a flexible, powerful framework for solving difficult optimization problems. Its hybrid engine combines the global search capabilities of Genetic Algorithms with the local refinement of Simulated Annealing, enhanced by modern techniques like surrogate modeling and distributional optimization.
 
-While the package includes specialized criteria for genomic selection and experimental design (such as CDMean, D-optimality, and PEV), its core engine is a general-purpose optimizer capable of handling:
+It handles diverse decision variables simultaneously:
+- **Discrete**: Subset selection (ordered/unordered), Integer variables, Boolean vectors.
+- **Continuous**: Real-valued vectors, Probability Simplices, SPD Matrices.
+- **Structural**: Graph and network structure learning, Clustering/Partitioning.
 
-- **Subset Selection**: Selecting the best subset of items from a larger pool (e.g., feature selection, team formation).
-- **Ordered Subset Selection**: Selecting a subset where the order matters (e.g., routing, scheduling).
-- **Continuous Optimization**: Optimizing continuous parameters.
-- **Mixed-Integer Optimization**: Problems involving both discrete and continuous variables.
-- **Multi-Objective Optimization**: Simultaneously optimizing multiple conflicting objectives.
-- **Graph/Structure Learning**: Discovering optimal network structures and architectures.
-- **Manifold-Constrained Optimization**: Optimizing on special manifolds (SPD matrices, probability simplices).
-- **Clustering/Partitioning**: Learning optimal groupings and stratifications.
+Applications include:
+- **Feature Selection & AutoML**: Selecting optimal subsets of features or hyperparameters.
+- **Genomic Prediction**: Optimizing training populations (CDMean, D-optimality).
+- **Portfolio Optimization**: Allocating assets with complex constraints.
+- **Experimental Design**: Optimal selection of samples or treatments.
+- **Causal Discovery**: Learning graph structures from data.
+- **Multi-Objective Problems**: Finding Pareto-optimal trade-offs (NSGA-II/NSGA-III).
 
 ## Installation
 
 ### From PyPI (Coming Soon)
 
 ```bash
-pip install trainselpy
+pip install evosolve
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/denizakdemir/trainselpy.git
-cd trainselpy
+git clone https://github.com/denizakdemir/evosolve.git
+cd evosolve
 pip install -e .
 ```
 
@@ -91,12 +93,12 @@ pip install seaborn
 
 ```python
 import numpy as np
-from trainselpy import make_data, train_sel, set_control_default
+from evosolve import make_data, train_sel, set_control_default
 
 # Load example data
-from trainselpy.data import wheat_data
+from evosolve.data import wheat_data
 
-# Create the TrainSel data object
+# Create the EvoSolve data object
 ts_data = make_data(M=wheat_data["M"])
 
 # Set control parameters
@@ -122,7 +124,7 @@ print("Fitness value:", result.fitness)
 ### D-optimality Criterion
 
 ```python
-from trainselpy import dopt
+from evosolve import dopt
 
 # Add feature matrix to data
 ts_data["FeatureMat"] = wheat_data["M"]
@@ -166,7 +168,7 @@ result = train_sel(
 ### Multi-objective Optimization with Diverse Solutions
 
 ```python
-from trainselpy import cdmean_opt, dopt
+from evosolve import cdmean_opt, dopt
 
 # Define a multi-objective function
 def multi_objective(solution, data):
@@ -192,7 +194,7 @@ result = train_sel(
 )
 
 # Plot the Pareto front
-from trainselpy.utils import plot_pareto_front
+from evosolve.utils import plot_pareto_front
 plot_pareto_front(
     result.pareto_front,
     obj_names=["CDMean", "D-optimality"],
@@ -301,7 +303,7 @@ result = train_sel(
 If you have the original WheatData from the R package, you can convert it:
 
 ```python
-from trainselpy.utils import r_data_to_python
+from evosolve.utils import r_data_to_python
 
 # Convert R data to Python format
 python_data = r_data_to_python("path/to/WheatData.rda", "wheat_data.pkl")
@@ -324,6 +326,7 @@ For more details and advanced usage, see the examples directory and the API docu
 - scikit-learn>=0.23.0
 - matplotlib>=3.2.0
 - joblib>=0.16.0
+- torch>=1.7.0
 
 Optional:
 - rpy2 (for converting R data)
@@ -335,4 +338,4 @@ MIT License
 
 ## Acknowledgments
 
-This package is a Python implementation of the TrainSel R package. The original R package was written by Deniz Akdemir, Julio Isidro Sanchez, Simon Rio and Javier Fernandez-Gonzalez. The TrainSelPy package was developed by Deniz Akdemir.
+EvoSolve is a Python implementation derived from the concepts of the TrainSel R package. The original R package was written by Deniz Akdemir, Julio Isidro Sanchez, Simon Rio and Javier Fernandez-Gonzalez. This Python evolution was developed by Deniz Akdemir.

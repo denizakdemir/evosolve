@@ -1,7 +1,7 @@
 """ Minimal working example for TrainSelPy. """
 import numpy as np
 import pandas as pd
-from trainselpy import (
+from evosolve import (
     make_data,
     train_sel,
     set_control_default,

@@ -12,7 +12,7 @@ where θ = (w_1,...,w_K, x_1,...,x_K) includes both weights and support points.
 
 import numpy as np
 from typing import List, Dict, Callable, Union, Optional, Any, Tuple
-from trainselpy.solution import Solution
+from evosolve.solution import Solution
 import copy
 
 
@@ -1124,7 +1124,7 @@ def mutate_support(
     dist : ParticleDistribution or DistributionalSolution
         Distribution to mutate
     base_mutate_fn : Callable, optional
-        Base mutation function (e.g., from operators.py). Defaults to trainselpy.operators.mutation.
+        Base mutation function (e.g., from operators.py). Defaults to evosolve.operators.mutation.
     candidates : List[List[int]]
         Candidates for base decision variables
     settypes : List[str]
@@ -1141,7 +1141,7 @@ def mutate_support(
     """
     if base_mutate_fn is None:
         # Default to the standard mutation operator for convenience/backward compatibility
-        from trainselpy.operators import mutation as base_mutate_fn  # Local import to avoid cycles
+        from evosolve.operators import mutation as base_mutate_fn  # Local import to avoid cycles
 
     # Handle parameter aliases
     if support_prob == 0.5:  # Default value
@@ -1207,7 +1207,7 @@ def birth_death_mutation(
     # Handle parameter aliases if any (none common yet but added for consistency)
     birth_rate = kwargs.get('birth_prob', birth_rate)
     death_rate = kwargs.get('death_prob', death_rate)
-    from trainselpy.algorithms import initialize_population
+    from evosolve.algorithms import initialize_population
     
     # Handle DistributionalSolution input
     is_sol = isinstance(dist, DistributionalSolution)

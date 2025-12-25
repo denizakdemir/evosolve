@@ -2,8 +2,8 @@
 import unittest
 import numpy as np
 import random
-from trainselpy import train_sel, set_control_default
-from trainselpy.algorithms import knapsack_repair
+from evosolve import train_sel, set_control_default
+from evosolve.algorithms import knapsack_repair
 
 class TestConvergenceMedium(unittest.TestCase):
     """

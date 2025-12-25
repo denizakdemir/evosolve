@@ -5,7 +5,7 @@ Genetic algorithm operators for TrainSelPy.
 import random
 import numpy as np
 from typing import List, Dict, Any, Optional, Set, Tuple
-from trainselpy.solution import Solution
+from evosolve.solution import Solution
 
 def _get_valid_replacement(
     current_val: Optional[int],

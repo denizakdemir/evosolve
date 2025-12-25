@@ -18,8 +18,8 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from trainselpy import train_sel, train_sel_control
-from trainselpy.core import get_distributional_preset
+from evosolve import train_sel, train_sel_control
+from evosolve.core import get_distributional_preset
 
 
 # Simulated asset returns (mean, std)
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     print("""
 To use a preset in your code:
 
-    from trainselpy.core import get_distributional_preset
+    from evosolve.core import get_distributional_preset
 
     # Option 1: Use preset directly
     preset = get_distributional_preset('robust')

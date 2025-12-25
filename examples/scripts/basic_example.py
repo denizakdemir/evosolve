@@ -13,7 +13,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # Import TrainSelPy functions
-from trainselpy import (
+from evosolve import (
     make_data,
     train_sel,
     set_control_default,
@@ -24,7 +24,7 @@ from trainselpy import (
 from custom_cdmean import custom_cdmean as cdmean_opt
 
 # Load example data
-from trainselpy.data import wheat_data
+from evosolve.data import wheat_data
 
 def main():
     """Run a restricted example of TrainSelPy with the first 200 genotypes only."""

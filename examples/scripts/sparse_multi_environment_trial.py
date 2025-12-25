@@ -26,8 +26,8 @@ from copy import deepcopy
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from trainselpy import make_data
-from trainselpy.optimization_criteria import cdmean_opt
+from evosolve import make_data
+from evosolve.optimization_criteria import cdmean_opt
 
 # Import from the multi-environment example
 from multi_environment_breeding_example import (

@@ -1,7 +1,7 @@
 import numpy as np
 import random
 
-from trainselpy.genetic_algorithm import genetic_algorithm
+from evosolve.genetic_algorithm import genetic_algorithm
 
 
 def test_vectorized_single_objective_matches_scalar():

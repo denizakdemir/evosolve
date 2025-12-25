@@ -2,8 +2,8 @@
 import unittest
 import numpy as np
 import random
-from trainselpy.algorithms import simulated_annealing
-from trainselpy.solution import Solution
+from evosolve.algorithms import simulated_annealing
+from evosolve.solution import Solution
 
 class TestSimulatedAnnealingRepro(unittest.TestCase):
     def test_sa_instability(self):

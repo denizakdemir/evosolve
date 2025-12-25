@@ -15,7 +15,7 @@ try:
 except ImportError:
     SKLEARN_AVAILABLE = False
 
-from trainselpy.solution import Solution, flatten_dbl_values
+from evosolve.solution import Solution, flatten_dbl_values
 
 class SurrogateModel:
     """

@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
-from trainselpy.algorithms import initialize_population
-from trainselpy.operators import mutation, crossover
-from trainselpy.solution import Solution
+from evosolve.algorithms import initialize_population
+from evosolve.operators import mutation, crossover
+from evosolve.solution import Solution
 
 
 class TestINTInitialization:
@@ -233,7 +233,7 @@ class TestINTNeuralNetworkIntegration:
     def test_int_extraction_for_nn(self):
         """Test that INT values can be extracted for neural network training."""
         # This test will be skipped until neural network support is implemented
-        from trainselpy.algorithms import _extract_decision_parts
+        from evosolve.algorithms import _extract_decision_parts
         
         int_count = 5
         min_val, max_val = 0, 100

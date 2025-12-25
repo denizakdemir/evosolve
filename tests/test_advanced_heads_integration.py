@@ -10,7 +10,7 @@ Tests full end-to-end workflows with train_sel(), including:
 
 import pytest
 import numpy as np
-from trainselpy.core import train_sel
+from evosolve.core import train_sel
 
 
 class TestAdvancedHeadsIntegration:
@@ -296,8 +296,8 @@ class TestAdvancedHeadsConstraintPreservation:
     
     def test_spd_constraint_preservation_chain(self):
         """Test SPD constraints through initialization, mutation, crossover."""
-        from trainselpy.algorithms import initialize_population
-        from trainselpy.operators import mutation, crossover
+        from evosolve.algorithms import initialize_population
+        from evosolve.operators import mutation, crossover
         
         n = 3
         setsizes = [n * n]
@@ -323,7 +323,7 @@ class TestAdvancedHeadsConstraintPreservation:
             assert np.all(eigvals > 0), "After mutation: not PD"
         
         # Crossover
-        from trainselpy.operators import crossover
+        from evosolve.operators import crossover
         offspring = crossover(pop, crossprob=0.8, crossintensity=0.5, 
                              settypes=settypes, candidates=candidates)[:5]
         
@@ -335,8 +335,8 @@ class TestAdvancedHeadsConstraintPreservation:
     
     def test_simplex_constraint_preservation_chain(self):
         """Test SIMPLEX constraints through initialization, mutation, crossover."""
-        from trainselpy.algorithms import initialize_population
-        from trainselpy.operators import mutation, crossover
+        from evosolve.algorithms import initialize_population
+        from evosolve.operators import mutation, crossover
         
         dim = 4
         setsizes = [dim]
@@ -360,7 +360,7 @@ class TestAdvancedHeadsConstraintPreservation:
             assert np.abs(np.sum(vec) - 1.0) < 1e-5, "After mutation: doesn't sum to 1"
         
         # Crossover
-        from trainselpy.operators import crossover
+        from evosolve.operators import crossover
         offspring = crossover(pop, crossprob=0.8, crossintensity=0.5,
                              settypes=settypes, candidates=candidates)[:5]
         

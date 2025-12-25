@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Any, List
 
-from trainselpy.relaxations import (
+from evosolve.relaxations import (
     DOptimality, 
     AOptimality, 
     CDMeanOptimality, 

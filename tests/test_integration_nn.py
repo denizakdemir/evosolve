@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from trainselpy.algorithms import genetic_algorithm
-from trainselpy.utils import create_mixed_model_data
+from evosolve.algorithms import genetic_algorithm
+from evosolve.utils import create_mixed_model_data
 
 def simple_fitness(int_vals, dbl_vals, data):
     # Try to maximize sum of elements
